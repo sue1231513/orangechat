@@ -48,6 +48,9 @@ interface ConversationDAO {
     @Query("SELECT * FROM conversationentity WHERE id = :id")
     suspend fun getConversationById(id: String): ConversationEntity?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM conversationentity WHERE id = :id)")
+    suspend fun existsById(id: String): Boolean
+
     @Insert
     suspend fun insert(conversation: ConversationEntity)
 

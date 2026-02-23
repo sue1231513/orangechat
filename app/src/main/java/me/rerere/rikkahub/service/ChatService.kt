@@ -914,15 +914,15 @@ class ChatService(
     }
 
     suspend fun saveConversation(conversationId: Uuid, conversation: Conversation) {
-        val existingConversation = conversationRepo.getConversationById(conversation.id)
-        if (existingConversation == null && conversation.title.isBlank() && conversation.messageNodes.isEmpty()) {
+        val exists = conversationRepo.existsConversationById(conversation.id)
+        if (!exists && conversation.title.isBlank() && conversation.messageNodes.isEmpty()) {
             return // 新会话且为空时不保存
         }
 
         val updatedConversation = conversation.copy()
         updateConversation(conversationId, updatedConversation)
 
-        if (existingConversation == null) {
+        if (!exists) {
             conversationRepo.insertConversation(updatedConversation)
         } else {
             conversationRepo.updateConversation(updatedConversation)

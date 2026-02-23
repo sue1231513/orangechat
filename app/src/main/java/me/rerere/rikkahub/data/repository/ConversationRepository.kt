@@ -198,6 +198,10 @@ class ConversationRepository(
         } else null
     }
 
+    suspend fun existsConversationById(uuid: Uuid): Boolean {
+        return conversationDAO.existsById(uuid.toString())
+    }
+
     suspend fun insertConversation(conversation: Conversation) {
         database.withTransaction {
             conversationDAO.insert(
