@@ -621,7 +621,7 @@ class ChatService(
                         prompt = settings.titlePrompt.applyPlaceholders(
                             "locale" to Locale.getDefault().displayName,
                             "content" to conversation.currentMessages.truncate(conversation.truncateIndex)
-                                .joinToString("\n\n") { it.summaryAsText() })
+                                .takeLast(4).joinToString("\n\n") { it.summaryAsText() })
                     ),
                 ),
                 params = TextGenerationParams(
