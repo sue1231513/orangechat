@@ -490,12 +490,15 @@ class ClaudeProvider(private val client: OkHttpClient) : Provider<ProviderSettin
 
     private fun parseTokenUsage(jsonObject: JsonObject?): TokenUsage? {
         if (jsonObject == null) return null
+        val inputTokens = jsonObject["input_tokens"]?.jsonPrimitive?.intOrNull ?: 0
+        val cachedInputTokens = jsonObject["cache_read_input_tokens"]?.jsonPrimitiveOrNull?.intOrNull ?: 0
+        val completionTokens = jsonObject["output_tokens"]?.jsonPrimitive?.intOrNull ?: 0
+        val promptTokens = inputTokens + cachedInputTokens
         return TokenUsage(
-            promptTokens = jsonObject["input_tokens"]?.jsonPrimitive?.intOrNull ?: 0,
-            completionTokens = jsonObject["output_tokens"]?.jsonPrimitive?.intOrNull ?: 0,
-            totalTokens = (jsonObject["input_tokens"]?.jsonPrimitive?.intOrNull ?: 0) +
-                (jsonObject["output_tokens"]?.jsonPrimitive?.intOrNull ?: 0),
-            cachedTokens = jsonObject["cache_read_input_tokens"]?.jsonPrimitiveOrNull?.intOrNull ?: 0,
+            promptTokens = promptTokens,
+            completionTokens = completionTokens,
+            totalTokens = promptTokens + completionTokens,
+            cachedTokens = cachedInputTokens,
         )
     }
 }
