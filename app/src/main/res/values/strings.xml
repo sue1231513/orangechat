@@ -497,7 +497,7 @@
   <string name="prompt_page_priority_format">Priority: %d</string>
   <string name="prompt_page_priority_label">Priority</string>
   <string name="prompt_page_role_assistant">Assistant (prefill)</string>
-  <string name="prompt_page_role_user">User (wrapped in system tag)</string>
+  <string name="prompt_page_role_user">User</string>
   <string name="prompt_page_scan_depth">Scan Depth (Messages)</string>
   <string name="prompt_page_title">Prompt Injection</string>
   <string name="prompt_page_unnamed">Unnamed</string>

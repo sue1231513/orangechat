@@ -497,7 +497,7 @@
   <string name="prompt_page_priority_format">우선순위: %d</string>
   <string name="prompt_page_priority_label">우선순위</string>
   <string name="prompt_page_role_assistant">어시스턴트 (미리 채우기)</string>
-  <string name="prompt_page_role_user">사용자 (시스템 태그로 래핑됨)</string>
+  <string name="prompt_page_role_user">사용자</string>
   <string name="prompt_page_scan_depth">스캔 깊이(메시지)</string>
   <string name="prompt_page_title">프롬프트 인젝션</string>
   <string name="prompt_page_unnamed">이름 없음</string>
