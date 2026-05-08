@@ -42,72 +42,57 @@ class FilesManager(
         private const val TAG = "FilesManager"
     }
 
-    suspend fun saveUploadFromUri(
+    suspend fun saveManagedFromUri(
+        folder: String,
         uri: Uri,
         displayName: String? = null,
         mimeType: String? = null,
     ): ManagedFileEntity = withContext(Dispatchers.IO) {
         val resolvedName = displayName ?: getFileNameFromUri(uri) ?: "file"
         val resolvedMime = mimeType ?: getFileMimeType(uri) ?: "application/octet-stream"
-        val target = createTargetFile(FileFolders.UPLOAD, resolvedName, resolvedMime)
+        val target = createTargetFile(folder, resolvedName, resolvedMime)
         context.contentResolver.openInputStream(uri)?.use { input ->
             target.outputStream().use { output ->
                 input.copyTo(output)
             }
         }
-        val now = System.currentTimeMillis()
-        repository.insert(
-            ManagedFileEntity(
-                folder = FileFolders.UPLOAD,
-                relativePath = "${FileFolders.UPLOAD}/${target.name}",
-                displayName = resolvedName,
-                mimeType = resolvedMime,
-                sizeBytes = target.length(),
-                createdAt = now,
-                updatedAt = now,
-            )
+        createManagedFileEntity(
+            folder = folder,
+            file = target,
+            displayName = resolvedName,
+            mimeType = resolvedMime,
         )
     }
 
-    suspend fun saveUploadFromBytes(
+    suspend fun saveManagedFromBytes(
+        folder: String,
         bytes: ByteArray,
         displayName: String,
         mimeType: String = "application/octet-stream",
     ): ManagedFileEntity = withContext(Dispatchers.IO) {
-        val target = createTargetFile(FileFolders.UPLOAD, displayName, mimeType)
+        val target = createTargetFile(folder, displayName, mimeType)
         target.writeBytes(bytes)
-        val now = System.currentTimeMillis()
-        repository.insert(
-            ManagedFileEntity(
-                folder = FileFolders.UPLOAD,
-                relativePath = "${FileFolders.UPLOAD}/${target.name}",
-                displayName = displayName,
-                mimeType = mimeType,
-                sizeBytes = target.length(),
-                createdAt = now,
-                updatedAt = now,
-            )
+        createManagedFileEntity(
+            folder = folder,
+            file = target,
+            displayName = displayName,
+            mimeType = mimeType,
         )
     }
 
-    suspend fun saveUploadText(
+    suspend fun saveManagedText(
+        folder: String,
         text: String,
         displayName: String = "pasted_text.txt",
         mimeType: String = "text/plain",
     ): ManagedFileEntity = withContext(Dispatchers.IO) {
-        val target = createTargetFile(FileFolders.UPLOAD, displayName, mimeType)
+        val target = createTargetFile(folder, displayName, mimeType)
         target.writeText(text)
-        val now = System.currentTimeMillis()
-        repository.insert(
-            ManagedFileEntity(
-                folder = FileFolders.UPLOAD,
-                relativePath = "${FileFolders.UPLOAD}/${target.name}",
-                displayName = displayName,
-                mimeType = mimeType,
-                sizeBytes = target.length(),
-                createdAt = now,
-                updatedAt = now,
-            )
+        createManagedFileEntity(
+            folder = folder,
+            file = target,
+            displayName = displayName,
+            mimeType = mimeType,
         )
     }
 
@@ -147,7 +132,12 @@ class FilesManager(
                     }
                 }
                 val guessedMime = sourceMime ?: guessMimeType(file, sourceName)
-                trackUploadFile(file = file, displayName = sourceName, mimeType = guessedMime)
+                trackManagedFile(
+                    folder = FileFolders.UPLOAD,
+                    file = file,
+                    displayName = sourceName,
+                    mimeType = guessedMime
+                )
                 newUris.add(file.toUri())
             }.onFailure {
                 it.printStackTrace()
@@ -177,7 +167,12 @@ class FilesManager(
             file.outputStream().use { outputStream ->
                 outputStream.write(byteArray)
             }
-            trackUploadFile(file = file, displayName = "image.png", mimeType = "image/png")
+            trackManagedFile(
+                folder = FileFolders.UPLOAD,
+                file = file,
+                displayName = "image.png",
+                mimeType = "image/png"
+            )
             newUris.add(newUri)
         }
         return newUris
@@ -250,7 +245,12 @@ class FilesManager(
         val fileName = buildUuidFileName(displayName = "pasted_text.txt", mimeType = "text/plain")
         val file = dir.resolve(fileName)
         file.writeText(text)
-        trackUploadFile(file = file, displayName = "pasted_text.txt", mimeType = "text/plain")
+        trackManagedFile(
+            folder = FileFolders.UPLOAD,
+            file = file,
+            displayName = "pasted_text.txt",
+            mimeType = "text/plain"
+        )
         return UIMessagePart.Document(
             url = file.toUri().toString(),
             fileName = "pasted_text.txt",
@@ -388,8 +388,28 @@ class FilesManager(
         return "${Uuid.random()}.$ext"
     }
 
-    private fun trackUploadFile(file: File, displayName: String, mimeType: String) {
-        val relativePath = "${FileFolders.UPLOAD}/${file.name}"
+    private suspend fun createManagedFileEntity(
+        folder: String,
+        file: File,
+        displayName: String,
+        mimeType: String,
+    ): ManagedFileEntity {
+        val now = System.currentTimeMillis()
+        return repository.insert(
+            ManagedFileEntity(
+                folder = folder,
+                relativePath = buildRelativePath(folder, file),
+                displayName = displayName,
+                mimeType = mimeType,
+                sizeBytes = file.length(),
+                createdAt = now,
+                updatedAt = now,
+            )
+        )
+    }
+
+    private fun trackManagedFile(folder: String, file: File, displayName: String, mimeType: String) {
+        val relativePath = buildRelativePath(folder, file)
         appScope.launch(Dispatchers.IO) {
             runCatching {
                 val existing = repository.getByPath(relativePath)
@@ -399,7 +419,7 @@ class FilesManager(
                 val now = System.currentTimeMillis()
                 repository.insert(
                     ManagedFileEntity(
-                        folder = FileFolders.UPLOAD,
+                        folder = folder,
                         relativePath = relativePath,
                         displayName = displayName,
                         mimeType = mimeType,
@@ -409,14 +429,17 @@ class FilesManager(
                     )
                 )
             }.onFailure {
-                Log.e(TAG, "trackUploadFile: Failed to track file ${file.absolutePath}", it)
+                Log.e(TAG, "trackManagedFile: Failed to track file ${file.absolutePath}", it)
                 Logging.log(
                     TAG,
-                    "trackUploadFile: Failed to track file ${file.absolutePath} ${it.message} | ${it.stackTraceToString()}"
+                    "trackManagedFile: Failed to track file ${file.absolutePath} ${it.message} | ${it.stackTraceToString()}"
                 )
             }
         }
     }
+
+    private fun buildRelativePath(folder: String, file: File): String =
+        "$folder/${file.name}"
 
     private fun getRelativePathInFilesDir(file: File): String? {
         val canonicalFile = runCatching { file.canonicalFile }.getOrNull() ?: return null
@@ -549,3 +572,36 @@ object FileFolders {
     const val UPLOAD = "upload"
     const val SKILLS = "skills"
 }
+
+suspend fun FilesManager.saveUploadFromUri(
+    uri: Uri,
+    displayName: String? = null,
+    mimeType: String? = null,
+): ManagedFileEntity = saveManagedFromUri(
+    folder = FileFolders.UPLOAD,
+    uri = uri,
+    displayName = displayName,
+    mimeType = mimeType,
+)
+
+suspend fun FilesManager.saveUploadFromBytes(
+    bytes: ByteArray,
+    displayName: String,
+    mimeType: String = "application/octet-stream",
+): ManagedFileEntity = saveManagedFromBytes(
+    folder = FileFolders.UPLOAD,
+    bytes = bytes,
+    displayName = displayName,
+    mimeType = mimeType,
+)
+
+suspend fun FilesManager.saveUploadText(
+    text: String,
+    displayName: String = "pasted_text.txt",
+    mimeType: String = "text/plain",
+): ManagedFileEntity = saveManagedText(
+    folder = FileFolders.UPLOAD,
+    text = text,
+    displayName = displayName,
+    mimeType = mimeType,
+)
