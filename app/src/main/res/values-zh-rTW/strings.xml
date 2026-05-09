@@ -982,5 +982,6 @@
   <string name="setting_provider_page_claude_prompt_cache_ttl_5m">5 分鐘</string>
   <string name="setting_provider_page_claude_prompt_cache_ttl">提示快取時長</string>
   <string name="assistant_page_temperature_warning">通常為 1。對於推理模型不建議修改。</string>
+  <string name="chat_page_check_title_model_settings">檢查標題模型設定</string>
 </resources>
 

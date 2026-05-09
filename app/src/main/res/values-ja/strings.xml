@@ -984,5 +984,6 @@ mDNSアドレス: .localホスト名を使用し、IPを知らなくても同じ
   <string name="setting_provider_page_claude_prompt_cache_ttl_5m">5分</string>
   <string name="setting_provider_page_claude_prompt_cache_ttl">プロンプトキャッシュ TTL</string>
   <string name="assistant_page_temperature_warning">通常は 1 です。推論モデルでは変更を推奨しません。</string>
+  <string name="chat_page_check_title_model_settings">タイトルモデル設定を確認</string>
 </resources>
 
