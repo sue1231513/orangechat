@@ -13,13 +13,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.gadgetbridge.GadgetbridgeDbPath
 import me.rerere.rikkahub.data.gadgetbridge.GadgetbridgeReader
 import me.rerere.rikkahub.data.gadgetbridge.HealthUiState
 import me.rerere.rikkahub.data.gadgetbridge.StepsRange
 import java.io.File
 
-class HealthVM(application: Application) : AndroidViewModel(application) {
+class HealthVM(
+    application: Application,
+    private val settingsStore: SettingsStore,
+) : AndroidViewModel(application) {
 
     private val _state = MutableStateFlow(HealthUiState())
     val state = _state.asStateFlow()
@@ -42,10 +46,12 @@ class HealthVM(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
+            val customPath = settingsStore.settingsFlow.value.systemToolsSetting.gadgetbridgeDbPath
+
             // 有权限后再检查文件
-            if (!GadgetbridgeReader.dbFileExists()) {
+            if (!GadgetbridgeReader.dbFileExists(customPath)) {
                 // 构建诊断信息，帮助用户排查
-                val paths = GadgetbridgeDbPath.POSSIBLE_PATHS
+                val paths = GadgetbridgeDbPath.getPossiblePaths(customPath)
                 val diagInfo = buildString {
                     append("未找到数据库文件。请确认 Gadgetbridge 已开启自动导出。\n")
                     append("预期路径: ${GadgetbridgeDbPath.DB_PATH}\n")
@@ -73,7 +79,7 @@ class HealthVM(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
-            loadHealthData()
+            loadHealthData(customPath)
         }
     }
 
@@ -82,14 +88,14 @@ class HealthVM(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { loadStepsData(range) }
     }
 
-    private suspend fun loadHealthData() {
+    private suspend fun loadHealthData(customPath: String = "") {
         withContext(Dispatchers.IO) {
             try {
-                val latestActivity = GadgetbridgeReader.readLatestActivitySample()
-                val dailySummaries7 = GadgetbridgeReader.readDailySummaries(7)
-                val dailySummaries30 = GadgetbridgeReader.readDailySummaries(30)
-                val sleepStages = GadgetbridgeReader.readLastNightSleepStages()
-                val (spo2, stress) = GadgetbridgeReader.readLatestSpo2AndStress()
+                val latestActivity = GadgetbridgeReader.readLatestActivitySample(customPath)
+                val dailySummaries7 = GadgetbridgeReader.readDailySummaries(7, customPath)
+                val dailySummaries30 = GadgetbridgeReader.readDailySummaries(30, customPath)
+                val sleepStages = GadgetbridgeReader.readLastNightSleepStages(customPath)
+                val (spo2, stress) = GadgetbridgeReader.readLatestSpo2AndStress(customPath)
                 val todaySummary = dailySummaries7.lastOrNull()
                 _state.value = _state.value.copy(
                     isLoading = false, dbFileExists = true,
@@ -110,8 +116,9 @@ class HealthVM(application: Application) : AndroidViewModel(application) {
     private suspend fun loadStepsData(range: StepsRange) {
         withContext(Dispatchers.IO) {
             try {
+                val customPath = settingsStore.settingsFlow.value.systemToolsSetting.gadgetbridgeDbPath
                 val days = if (range == StepsRange.SEVEN_DAYS) 7 else 30
-                val summaries = GadgetbridgeReader.readDailySummaries(days)
+                val summaries = GadgetbridgeReader.readDailySummaries(days, customPath)
                 if (range == StepsRange.SEVEN_DAYS) {
                     _state.value = _state.value.copy(dailySummaries7 = summaries)
                 } else {

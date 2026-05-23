@@ -18,30 +18,52 @@ object GadgetbridgeDbPath {
             "Download/手环/Gadgetbridge.db"
         ).absolutePath
 
-    /** 列出所有可能的路径变体，用于搜索和诊断 */
-    val POSSIBLE_PATHS: List<String>
-        get() = listOf(
-            // 主路径：使用 Environment API
+    /**
+     * 获取所有可能的路径变体列表
+     * @param customPath 用户自定义路径，为空则使用默认路径列表
+     */
+    fun getPossiblePaths(customPath: String = ""): List<String> {
+        val paths = mutableListOf<String>()
+
+        // 如果有自定义路径，优先使用
+        if (customPath.isNotBlank()) {
+            paths.add(customPath)
+        }
+
+        // 默认路径列表（同时包含 .db 和 .sqlite3 变体）
+        val defaultPaths = listOf(
             DB_PATH,
-            // 常见硬编码路径变体
             "/sdcard/Download/手环/Gadgetbridge.db",
             "/storage/emulated/0/Download/手环/Gadgetbridge.db",
-            // 有些设备的 Download 目录可能不同
             "/sdcard/下载/手环/Gadgetbridge.db",
             "/storage/emulated/0/下载/手环/Gadgetbridge.db",
             File(Environment.getExternalStorageDirectory(), "下载/手环/Gadgetbridge.db").absolutePath,
         )
+        paths.addAll(defaultPaths)
+
+        // 为每个 .db 路径添加 .sqlite3 变体
+        val sqlite3Variants = paths
+            .filter { it.endsWith(".db") }
+            .map { it.removeSuffix(".db") + ".sqlite3" }
+        paths.addAll(sqlite3Variants)
+
+        return paths.distinct()
+    }
 }
 
 object GadgetbridgeReader {
 
-    fun dbFileExists(): Boolean {
-        // 尝试所有可能的路径
-        for (path in GadgetbridgeDbPath.POSSIBLE_PATHS) {
+    // 缓存上次找到的路径，避免重复搜索
+    private var cachedDbPath: String? = null
+
+    fun dbFileExists(customPath: String = ""): Boolean {
+        val paths = GadgetbridgeDbPath.getPossiblePaths(customPath)
+        for (path in paths) {
             try {
                 val file = File(path)
                 Log.d(TAG, "检查数据库文件: $path, exists=${file.exists()}, length=${if (file.exists()) file.length() else 0}")
                 if (file.exists() && file.length() > 0) {
+                    cachedDbPath = path
                     return true
                 }
             } catch (e: Exception) {
@@ -54,12 +76,22 @@ object GadgetbridgeReader {
     /**
      * 获取实际存在的数据库文件路径
      */
-    private fun findDbPath(): String? {
-        for (path in GadgetbridgeDbPath.POSSIBLE_PATHS) {
+    private fun findDbPath(customPath: String = ""): String? {
+        // 如果有缓存的路径且文件仍存在，直接返回
+        cachedDbPath?.let { cached ->
+            if (File(cached).exists() && File(cached).length() > 0) {
+                return cached
+            }
+            cachedDbPath = null
+        }
+
+        val paths = GadgetbridgeDbPath.getPossiblePaths(customPath)
+        for (path in paths) {
             try {
                 val file = File(path)
                 if (file.exists() && file.length() > 0) {
                     Log.d(TAG, "找到数据库文件: $path")
+                    cachedDbPath = path
                     return path
                 }
             } catch (_: Exception) {}
@@ -67,8 +99,8 @@ object GadgetbridgeReader {
         return null
     }
 
-    private fun <T> withDatabase(block: (SQLiteDatabase) -> T): Result<T> {
-        val dbPath = findDbPath() ?: return Result.failure(
+    private fun <T> withDatabase(customPath: String = "", block: (SQLiteDatabase) -> T): Result<T> {
+        val dbPath = findDbPath(customPath) ?: return Result.failure(
             IllegalStateException("Gadgetbridge 数据库文件不存在")
         )
         var db: SQLiteDatabase? = null
@@ -87,8 +119,8 @@ object GadgetbridgeReader {
         }
     }
 
-    fun readDailySummaries(days: Int): List<DailySummary> {
-        return withDatabase { db ->
+    fun readDailySummaries(days: Int, customPath: String = ""): List<DailySummary> {
+        return withDatabase(customPath) { db ->
             val now = LocalDate.now()
             val startTime = now.minusDays(days.toLong())
                 .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -111,8 +143,8 @@ object GadgetbridgeReader {
         }.getOrDefault(emptyList())
     }
 
-    fun readLatestActivitySample(): ActivitySample? {
-        return withDatabase { db ->
+    fun readLatestActivitySample(customPath: String = ""): ActivitySample? {
+        return withDatabase(customPath) { db ->
             val cursor = db.query("XIAOMI_ACTIVITY_SAMPLE", arrayOf("TIMESTAMP", "HEART_RATE", "STEPS", "STRESS", "SPO2", "RAW_INTENSITY"), null, null, null, null, "TIMESTAMP DESC", "1")
             cursor.use {
                 if (it.moveToFirst()) ActivitySample(it.getLong(0), getIntOrNull(it, 1), getIntOrNull(it, 2), getIntOrNull(it, 3), getIntOrNull(it, 4), getIntOrNull(it, 5)) else null
@@ -120,8 +152,8 @@ object GadgetbridgeReader {
         }.getOrDefault(null)
     }
 
-    fun readLastNightSleepStages(): List<SleepStage> {
-        return withDatabase { db ->
+    fun readLastNightSleepStages(customPath: String = ""): List<SleepStage> {
+        return withDatabase(customPath) { db ->
             val now = LocalDate.now()
             val start = now.minusDays(1).atTime(18, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             val end = now.atTime(18, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -134,8 +166,8 @@ object GadgetbridgeReader {
         }.getOrDefault(emptyList())
     }
 
-    fun readLatestSpo2AndStress(): Pair<Int?, Int?> {
-        return withDatabase { db ->
+    fun readLatestSpo2AndStress(customPath: String = ""): Pair<Int?, Int?> {
+        return withDatabase(customPath) { db ->
             val startSec = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().epochSecond
             var spo2: Int? = null
             var stress: Int? = null

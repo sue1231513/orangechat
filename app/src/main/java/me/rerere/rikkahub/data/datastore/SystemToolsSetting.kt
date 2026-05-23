@@ -40,6 +40,10 @@ data class SystemToolsSetting(
 
     // Feature 14: Gadgetbridge health data
     val gadgetbridgeEnabled: Boolean = false,
+    val gadgetbridgeDbPath: String = "",
+
+    // Feature 15: Alarm
+    val alarmEnabled: Boolean = false,
 ) {
     fun getEnabledOptions(): Set<me.rerere.rikkahub.data.ai.tools.SystemToolOption> {
         val options = mutableSetOf<me.rerere.rikkahub.data.ai.tools.SystemToolOption>()
@@ -49,6 +53,7 @@ data class SystemToolsSetting(
         if (cameraAccess || cameraOcrEnabled) options.add(me.rerere.rikkahub.data.ai.tools.SystemToolOption.Camera)
         if (locationExploreEnabled) options.add(me.rerere.rikkahub.data.ai.tools.SystemToolOption.ExploreNearby)
         if (gadgetbridgeEnabled) options.add(me.rerere.rikkahub.data.ai.tools.SystemToolOption.Gadgetbridge)
+        if (alarmEnabled) options.add(me.rerere.rikkahub.data.ai.tools.SystemToolOption.Alarm)
         return options
     }
 }

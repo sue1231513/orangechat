@@ -149,6 +149,9 @@ class SettingsStore(
 
         // 系统工具设置
         val SYSTEM_TOOLS_SETTING = stringPreferencesKey("system_tools_setting")
+
+        // 主动消息设置
+        val PROACTIVE_MESSAGE_SETTING = stringPreferencesKey("proactive_message_setting")
     }
 
     private val dataStore = context.settingsStore
@@ -241,6 +244,9 @@ class SettingsStore(
                 systemToolsSetting = preferences[SYSTEM_TOOLS_SETTING]?.let {
                     JsonInstant.decodeFromString(it)
                 } ?: SystemToolsSetting(),
+                proactiveMessageSetting = preferences[PROACTIVE_MESSAGE_SETTING]?.let {
+                    JsonInstant.decodeFromString(it)
+                } ?: ProactiveMessageSetting(),
             )
         }
         .map {
@@ -403,6 +409,7 @@ class SettingsStore(
             preferences[LAUNCH_COUNT] = settings.launchCount
             preferences[SPONSOR_ALERT_DISMISSED_AT] = settings.sponsorAlertDismissedAt
             preferences[SYSTEM_TOOLS_SETTING] = JsonInstant.encodeToString(settings.systemToolsSetting)
+            preferences[PROACTIVE_MESSAGE_SETTING] = JsonInstant.encodeToString(settings.proactiveMessageSetting)
         }
     }
 

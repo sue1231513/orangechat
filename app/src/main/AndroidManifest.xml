@@ -24,6 +24,7 @@
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
     tools:ignore="ScopedStorage" />
+  <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
   <uses-feature
     android:name="android.hardware.camera"
@@ -35,6 +36,15 @@
   <queries>
     <intent>
       <action android:name="android.intent.action.TTS_SERVICE" />
+    </intent>
+    <intent>
+      <action android:name="android.intent.action.SET_ALARM" />
+    </intent>
+    <intent>
+      <action android:name="android.intent.action.SHOW_ALARMS" />
+    </intent>
+    <intent>
+      <action android:name="android.intent.action.DISMISS_ALARM" />
     </intent>
   </queries>
 

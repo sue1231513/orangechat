@@ -28,6 +28,7 @@ sealed class SystemToolOption {
     @Serializable @SerialName("camera") data object Camera : SystemToolOption()
     @Serializable @SerialName("explore_nearby") data object ExploreNearby : SystemToolOption()
     @Serializable @SerialName("gadgetbridge") data object Gadgetbridge : SystemToolOption()
+    @Serializable @SerialName("alarm") data object Alarm : SystemToolOption()
 }
 
 class SystemTools(private val context: Context, private val settings: Settings) {
@@ -196,7 +197,8 @@ class SystemTools(private val context: Context, private val settings: Settings) 
     private val appUsageTool by lazy { createAppUsageTool(context) }
     private val exploreNearbyTool by lazy { createExploreNearbyTool(context, settings) }
     private val cameraTool by lazy { createCameraTool(context) }
-    private val gadgetbridgeTool by lazy { createGadgetbridgeTool() }
+    private val gadgetbridgeTool by lazy { createGadgetbridgeTool(settings.systemToolsSetting.gadgetbridgeDbPath) }
+    private val alarmTool by lazy { createAlarmTool(context) }
 
     // ==================== 获取工具列表 ====================
 
@@ -208,6 +210,7 @@ class SystemTools(private val context: Context, private val settings: Settings) 
         if (SystemToolOption.ExploreNearby in enabledTools) tools.add(exploreNearbyTool)
         if (SystemToolOption.Camera in enabledTools) tools.add(cameraTool)
         if (SystemToolOption.Gadgetbridge in enabledTools) tools.add(gadgetbridgeTool)
+        if (SystemToolOption.Alarm in enabledTools) tools.add(alarmTool)
         return tools
     }
 }

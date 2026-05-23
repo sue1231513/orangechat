@@ -10,11 +10,11 @@ import me.rerere.ai.core.Tool
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.gadgetbridge.GadgetbridgeReader
 
-fun createGadgetbridgeTool(): Tool = Tool(
+fun createGadgetbridgeTool(customPath: String = ""): Tool = Tool(
     name = "get_gadgetbridge_data",
     description = "Get health and fitness data from Gadgetbridge (wearable device companion app). " +
         "Returns step count, heart rate, sleep data, blood oxygen, stress, and calories. " +
-        "Reads from Gadgetbridge's auto-exported database at /sdcard/Download/手环/Gadgetbridge.db. " +
+        "Reads from Gadgetbridge's auto-exported database. " +
         "Requires storage permission and Gadgetbridge auto-export to be enabled.",
     parameters = {
         InputSchema.Obj(
@@ -41,7 +41,7 @@ fun createGadgetbridgeTool(): Tool = Tool(
         val dataType = params["data_type"]?.jsonPrimitive?.content ?: "all"
 
         try {
-            if (!GadgetbridgeReader.dbFileExists()) {
+            if (!GadgetbridgeReader.dbFileExists(customPath)) {
                 return@Tool listOf(UIMessagePart.Text(
                     buildJsonObject {
                         put("success", false)
@@ -52,7 +52,7 @@ fun createGadgetbridgeTool(): Tool = Tool(
 
             val result = when (dataType) {
                 "steps" -> {
-                    val summaries = GadgetbridgeReader.readDailySummaries(7)
+                    val summaries = GadgetbridgeReader.readDailySummaries(7, customPath)
                     val today = summaries.lastOrNull()
                     buildJsonObject {
                         put("success", true)
@@ -70,8 +70,8 @@ fun createGadgetbridgeTool(): Tool = Tool(
                     }.toString()
                 }
                 "heart_rate" -> {
-                    val latest = GadgetbridgeReader.readLatestActivitySample()
-                    val summaries = GadgetbridgeReader.readDailySummaries(7)
+                    val latest = GadgetbridgeReader.readLatestActivitySample(customPath)
+                    val summaries = GadgetbridgeReader.readDailySummaries(7, customPath)
                     buildJsonObject {
                         put("success", true)
                         put("data_type", "heart_rate")
@@ -90,7 +90,7 @@ fun createGadgetbridgeTool(): Tool = Tool(
                     }.toString()
                 }
                 "sleep" -> {
-                    val stages = GadgetbridgeReader.readLastNightSleepStages()
+                    val stages = GadgetbridgeReader.readLastNightSleepStages(customPath)
                     buildJsonObject {
                         put("success", true)
                         put("data_type", "sleep")
@@ -110,7 +110,7 @@ fun createGadgetbridgeTool(): Tool = Tool(
                     }.toString()
                 }
                 "daily_summary" -> {
-                    val summaries = GadgetbridgeReader.readDailySummaries(7)
+                    val summaries = GadgetbridgeReader.readDailySummaries(7, customPath)
                     buildJsonObject {
                         put("success", true)
                         put("data_type", "daily_summary")
@@ -133,10 +133,10 @@ fun createGadgetbridgeTool(): Tool = Tool(
                 }
                 else -> {
                     // "all" - return combined data
-                    val latest = GadgetbridgeReader.readLatestActivitySample()
-                    val summaries = GadgetbridgeReader.readDailySummaries(7)
-                    val sleepStages = GadgetbridgeReader.readLastNightSleepStages()
-                    val (spo2, stress) = GadgetbridgeReader.readLatestSpo2AndStress()
+                    val latest = GadgetbridgeReader.readLatestActivitySample(customPath)
+                    val summaries = GadgetbridgeReader.readDailySummaries(7, customPath)
+                    val sleepStages = GadgetbridgeReader.readLastNightSleepStages(customPath)
+                    val (spo2, stress) = GadgetbridgeReader.readLatestSpo2AndStress(customPath)
                     val today = summaries.lastOrNull()
                     buildJsonObject {
                         put("success", true)

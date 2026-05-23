@@ -20,7 +20,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,10 +54,6 @@ import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
 
-/**
- * 系统工具设置页面
- * 管理位置、通知、App使用、OCR等系统工具的权限和配置
- */
 @Composable
 fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
     val context = LocalContext.current
@@ -66,7 +61,6 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
     var systemToolsSetting by remember(settings) {
         mutableStateOf(settings.systemToolsSetting)
     }
-    // 确保systemToolsSetting始终与最新的settings同步
     LaunchedEffect(settings) {
         systemToolsSetting = settings.systemToolsSetting
     }
@@ -78,7 +72,6 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    // 权限状态
     val locationPermissions = buildSet {
         add(PermissionAccessFineLocation)
         add(PermissionAccessCoarseLocation)
@@ -97,12 +90,8 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
     Scaffold(
         topBar = {
             LargeFlexibleTopAppBar(
-                title = {
-                    Text("系统工具")
-                },
-                navigationIcon = {
-                    BackButton()
-                },
+                title = { Text("系统工具") },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors
             )
@@ -115,8 +104,6 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
             contentPadding = contentPadding + PaddingValues(8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-
             // 位置服务
             item {
                 CardGroup(
@@ -125,15 +112,10 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                 ) {
                     item(
                         leadingContent = {
-                            Icon(
-                                imageVector = HugeIcons.Location01,
-                                contentDescription = null
-                            )
+                            Icon(imageVector = HugeIcons.Location01, contentDescription = null)
                         },
                         headlineContent = { Text("启用位置工具") },
-                        supportingContent = {
-                            Text("允许AI获取您的当前位置，并使用高德API转换为地址")
-                        },
+                        supportingContent = { Text("允许AI获取您的当前位置，并使用高德API转换为地址") },
                         trailingContent = {
                             Switch(
                                 checked = systemToolsSetting.locationAccess,
@@ -141,9 +123,7 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                                     if (enabled && !locationPermissionState.allPermissionsGranted) {
                                         locationPermissionState.requestPermissions()
                                     }
-                                    updateSystemToolsSetting(
-                                        systemToolsSetting.copy(locationAccess = enabled)
-                                    )
+                                    updateSystemToolsSetting(systemToolsSetting.copy(locationAccess = enabled))
                                 }
                             )
                         }
@@ -153,11 +133,7 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                             headlineContent = { Text("⚠ 位置权限未授予") },
                             supportingContent = { Text("点击授权按钮授予位置权限") },
                             trailingContent = {
-                                FilledTonalButton(onClick = {
-                                    locationPermissionState.requestPermissions()
-                                }) {
-                                    Text("授权")
-                                }
+                                FilledTonalButton(onClick = { locationPermissionState.requestPermissions() }) { Text("授权") }
                             }
                         )
                     }
@@ -167,19 +143,12 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                             supportingContent = {
                                 TextField(
                                     value = systemToolsSetting.amapApiKey,
-                                    onValueChange = { key ->
-                                        updateSystemToolsSetting(
-                                            systemToolsSetting.copy(amapApiKey = key)
-                                        )
-                                    },
+                                    onValueChange = { key -> updateSystemToolsSetting(systemToolsSetting.copy(amapApiKey = key)) },
                                     placeholder = { Text("请输入高德Web服务API Key") },
                                     modifier = Modifier.fillMaxSize(),
                                     singleLine = true,
                                     shape = MaterialTheme.shapes.small,
-                                    colors = TextFieldDefaults.colors(
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent,
-                                    )
+                                    colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent)
                                 )
                             }
                         )
@@ -194,24 +163,13 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                     modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
                     item(
-                        leadingContent = {
-                            Icon(
-                                imageVector = HugeIcons.Notification02,
-                                contentDescription = null
-                            )
-                        },
+                        leadingContent = { Icon(imageVector = HugeIcons.Notification02, contentDescription = null) },
                         headlineContent = { Text("启用通知工具") },
-                        supportingContent = {
-                            Text("允许AI读取今日通知，了解您的消息动态")
-                        },
+                        supportingContent = { Text("允许AI读取今日通知，了解您的消息动态") },
                         trailingContent = {
                             Switch(
                                 checked = systemToolsSetting.notificationAccess,
-                                onCheckedChange = { enabled ->
-                                    updateSystemToolsSetting(
-                                        systemToolsSetting.copy(notificationAccess = enabled)
-                                    )
-                                }
+                                onCheckedChange = { enabled -> updateSystemToolsSetting(systemToolsSetting.copy(notificationAccess = enabled)) }
                             )
                         }
                     )
@@ -221,34 +179,19 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                             supportingContent = {
                                 val cn = android.content.ComponentName(context, me.rerere.rikkahub.data.service.RikkaNotificationListenerService::class.java)
                                 val enabled = try {
-                                    Settings.Secure.getString(
-                                        context.contentResolver,
-                                        "enabled_notification_listeners"
-                                    )?.contains(cn.flattenToString()) == true
+                                    Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")?.contains(cn.flattenToString()) == true
                                 } catch (_: Exception) { false }
-                                if (enabled) {
-                                    Text("✓ 已授予通知访问权限")
-                                } else {
-                                    Text("⚠ 需要在系统设置中授予通知访问权限")
-                                }
+                                if (enabled) Text("✓ 已授予通知访问权限") else Text("⚠ 需要在系统设置中授予通知访问权限")
                             },
                             trailingContent = {
                                 val cn = android.content.ComponentName(context, me.rerere.rikkahub.data.service.RikkaNotificationListenerService::class.java)
                                 val enabled = try {
-                                    Settings.Secure.getString(
-                                        context.contentResolver,
-                                        "enabled_notification_listeners"
-                                    )?.contains(cn.flattenToString()) == true
+                                    Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")?.contains(cn.flattenToString()) == true
                                 } catch (_: Exception) { false }
                                 if (!enabled) {
                                     FilledTonalButton(onClick = {
-                                        try {
-                                            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                                            context.startActivity(intent)
-                                        } catch (_: Exception) {}
-                                    }) {
-                                        Text("去设置")
-                                    }
+                                        try { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } catch (_: Exception) {}
+                                    }) { Text("去设置") }
                                 }
                             }
                         )
@@ -263,24 +206,13 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                     modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
                     item(
-                        leadingContent = {
-                            Icon(
-                                imageVector = HugeIcons.SmartPhone01,
-                                contentDescription = null
-                            )
-                        },
+                        leadingContent = { Icon(imageVector = HugeIcons.SmartPhone01, contentDescription = null) },
                         headlineContent = { Text("启用应用使用工具") },
-                        supportingContent = {
-                            Text("允许AI查看您的应用使用情况和轨迹，需要使用情况访问权限")
-                        },
+                        supportingContent = { Text("允许AI查看您的应用使用情况和轨迹，需要使用情况访问权限") },
                         trailingContent = {
                             Switch(
                                 checked = systemToolsSetting.appUsageAccess,
-                                onCheckedChange = { enabled ->
-                                    updateSystemToolsSetting(
-                                        systemToolsSetting.copy(appUsageAccess = enabled)
-                                    )
-                                }
+                                onCheckedChange = { enabled -> updateSystemToolsSetting(systemToolsSetting.copy(appUsageAccess = enabled)) }
                             )
                         }
                     )
@@ -288,22 +220,13 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                         item(
                             headlineContent = { Text("使用情况访问权限") },
                             supportingContent = {
-                                if (SystemTools.hasAppUsagePermission(context)) {
-                                    Text("✓ 已授予使用情况访问权限")
-                                } else {
-                                    Text("⚠ 需要在系统设置中授予使用情况访问权限")
-                                }
+                                if (SystemTools.hasAppUsagePermission(context)) Text("✓ 已授予使用情况访问权限") else Text("⚠ 需要在系统设置中授予使用情况访问权限")
                             },
                             trailingContent = {
                                 if (!SystemTools.hasAppUsagePermission(context)) {
                                     FilledTonalButton(onClick = {
-                                        try {
-                                            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                                            context.startActivity(intent)
-                                        } catch (_: Exception) {}
-                                    }) {
-                                        Text("去设置")
-                                    }
+                                        try { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) {}
+                                    }) { Text("去设置") }
                                 }
                             }
                         )
@@ -311,33 +234,22 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                 }
             }
 
-            // 探索周边服务
+            // 探索周边
             item {
                 CardGroup(
                     title = { Text("探索周边") },
                     modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
                     item(
-                        leadingContent = {
-                            Icon(
-                                imageVector = HugeIcons.Location01,
-                                contentDescription = null
-                            )
-                        },
+                        leadingContent = { Icon(imageVector = HugeIcons.Location01, contentDescription = null) },
                         headlineContent = { Text("启用周边探索") },
-                        supportingContent = {
-                            Text("允许AI使用高德API搜索周边POI，如餐厅、商店、景点等")
-                        },
+                        supportingContent = { Text("允许AI使用高德API搜索周边POI，如餐厅、商店、景点等") },
                         trailingContent = {
                             Switch(
                                 checked = systemToolsSetting.locationExploreEnabled,
                                 onCheckedChange = { enabled ->
-                                    if (enabled && !locationPermissionState.allPermissionsGranted) {
-                                        locationPermissionState.requestPermissions()
-                                    }
-                                    updateSystemToolsSetting(
-                                        systemToolsSetting.copy(locationExploreEnabled = enabled)
-                                    )
+                                    if (enabled && !locationPermissionState.allPermissionsGranted) locationPermissionState.requestPermissions()
+                                    updateSystemToolsSetting(systemToolsSetting.copy(locationExploreEnabled = enabled))
                                 }
                             )
                         }
@@ -350,17 +262,13 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                                     value = systemToolsSetting.locationExploreRadius.toString(),
                                     onValueChange = { value ->
                                         val radius = value.toIntOrNull()
-                                        if (radius != null && radius > 0) {
-                                            updateSystemToolsSetting(
-                                                systemToolsSetting.copy(locationExploreRadius = radius)
-                                            )
-                                        }
+                                        if (radius != null && radius > 0) updateSystemToolsSetting(systemToolsSetting.copy(locationExploreRadius = radius))
                                     },
                                     placeholder = { Text("1000") },
                                     singleLine = true,
-                                    modifier = Modifier.padding(top = 8.dp),
+                                    modifier = Modifier.padding(top = 8.dp)
                                 )
-                            },
+                            }
                         )
                     }
                 }
@@ -373,27 +281,17 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                     modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
                     item(
-                        leadingContent = {
-                            Icon(
-                                imageVector = HugeIcons.SmartPhone01,
-                                contentDescription = null
-                            )
-                        },
+                        leadingContent = { Icon(imageVector = HugeIcons.SmartPhone01, contentDescription = null) },
                         headlineContent = { Text("启用 Supabase 同步") },
-                        supportingContent = {
-                            Text("开启后立即同步一次，之后每15分钟自动同步")
-                        },
+                        supportingContent = { Text("开启后立即同步一次，之后每15分钟自动同步") },
                         trailingContent = {
                             Switch(
                                 checked = systemToolsSetting.supabaseEnabled,
                                 onCheckedChange = { enabled ->
                                     val newSetting = systemToolsSetting.copy(supabaseEnabled = enabled)
                                     updateSystemToolsSetting(newSetting)
-                                    if (enabled) {
-                                        me.rerere.rikkahub.data.service.SupabaseSyncService.triggerNow(context)
-                                    } else {
-                                        me.rerere.rikkahub.data.service.SupabaseSyncService.cancel(context)
-                                    }
+                                    if (enabled) me.rerere.rikkahub.data.service.SupabaseSyncService.triggerNow(context)
+                                    else me.rerere.rikkahub.data.service.SupabaseSyncService.cancel(context)
                                 }
                             )
                         }
@@ -431,80 +329,51 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                             }
                         }
                     )
-                        item(
-                            headlineContent = { Text("Supabase URL") },
-                            supportingContent = {
-                                TextField(
-                                    value = systemToolsSetting.supabaseUrl,
-                                    onValueChange = { url ->
-                                        updateSystemToolsSetting(
-                                            systemToolsSetting.copy(supabaseUrl = url)
-                                        )
-                                    },
-                                    placeholder = { Text("https://xxxx.supabase.co") },
-                                    modifier = Modifier.fillMaxSize(),
-                                    singleLine = true,
-                                    shape = MaterialTheme.shapes.small,
-                                    colors = TextFieldDefaults.colors(
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent,
-                                    )
-                                )
-                            }
-                        )
-                        item(
-                            headlineContent = { Text("Supabase API Key") },
-                            supportingContent = {
-                                TextField(
-                                    value = systemToolsSetting.supabaseApiKey,
-                                    onValueChange = { key ->
-                                        updateSystemToolsSetting(
-                                            systemToolsSetting.copy(supabaseApiKey = key)
-                                        )
-                                    },
-                                    placeholder = { Text("eyJhbGciOiJIUzI1NiIs...") },
-                                    modifier = Modifier.fillMaxSize(),
-                                    singleLine = true,
-                                    shape = MaterialTheme.shapes.small,
-                                    colors = TextFieldDefaults.colors(
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent,
-                                    )
-                                )
-                            }
-                        )
-                        item(
-                            headlineContent = { Text("数据表名") },
-                            supportingContent = {
-                                TextField(
-                                    value = systemToolsSetting.supabaseTableName,
-                                    onValueChange = { name ->
-                                        updateSystemToolsSetting(
-                                            systemToolsSetting.copy(supabaseTableName = name)
-                                        )
-                                    },
-                                    placeholder = { Text("device_data") },
-                                    modifier = Modifier.fillMaxSize(),
-                                    singleLine = true,
-                                    shape = MaterialTheme.shapes.small,
-                                    colors = TextFieldDefaults.colors(
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent,
-                                    )
-                                )
-                            }
-                        )
-                        item(
-                            headlineContent = { Text("说明") },
-                            supportingContent = {
-                                Text("需要先在 Supabase 创建数据表，表结构需包含以下字段：\n" +
-                                    "timestamp (text), foreground_app (text), \n" +
-                                    "location_latitude (float), location_longitude (float), \n" +
-                                    "location_address (text), location_city (text), \n" +
-                                    "location_district (text), location_street (text), \n" +
-                                    "app_usage (text/jsonb), notifications (text/jsonb)")
-                            }
-                        )
+                    item(
+                        headlineContent = { Text("Supabase URL") },
+                        supportingContent = {
+                            TextField(
+                                value = systemToolsSetting.supabaseUrl,
+                                onValueChange = { url -> updateSystemToolsSetting(systemToolsSetting.copy(supabaseUrl = url)) },
+                                placeholder = { Text("https://xxxx.supabase.co") },
+                                modifier = Modifier.fillMaxSize(), singleLine = true,
+                                shape = MaterialTheme.shapes.small,
+                                colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent)
+                            )
+                        }
+                    )
+                    item(
+                        headlineContent = { Text("Supabase API Key") },
+                        supportingContent = {
+                            TextField(
+                                value = systemToolsSetting.supabaseApiKey,
+                                onValueChange = { key -> updateSystemToolsSetting(systemToolsSetting.copy(supabaseApiKey = key)) },
+                                placeholder = { Text("eyJhbGciOiJIUzI1NiIs...") },
+                                modifier = Modifier.fillMaxSize(), singleLine = true,
+                                shape = MaterialTheme.shapes.small,
+                                colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent)
+                            )
+                        }
+                    )
+                    item(
+                        headlineContent = { Text("数据表名") },
+                        supportingContent = {
+                            TextField(
+                                value = systemToolsSetting.supabaseTableName,
+                                onValueChange = { name -> updateSystemToolsSetting(systemToolsSetting.copy(supabaseTableName = name)) },
+                                placeholder = { Text("device_data") },
+                                modifier = Modifier.fillMaxSize(), singleLine = true,
+                                shape = MaterialTheme.shapes.small,
+                                colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent)
+                            )
+                        }
+                    )
+                    item(
+                        headlineContent = { Text("说明") },
+                        supportingContent = {
+                            Text("需要先在 Supabase 创建数据表，表结构需包含以下字段：\ntimestamp (text), foreground_app (text), location_latitude (float), location_longitude (float), location_address (text), location_city (text), location_district (text), location_street (text), app_usage (text/jsonb), notifications (text/jsonb)")
+                        }
+                    )
                 }
             }
 
@@ -515,26 +384,15 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                     modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
                     item(
-                        leadingContent = {
-                            Icon(
-                                imageVector = HugeIcons.Camera01,
-                                contentDescription = null
-                            )
-                        },
+                        leadingContent = { Icon(imageVector = HugeIcons.Camera01, contentDescription = null) },
                         headlineContent = { Text("启用拍照工具") },
-                        supportingContent = {
-                            Text("允许AI在后台拍照并识别图像内容（物体、场景、文字等），照片会发送给AI进行视觉分析")
-                        },
+                        supportingContent = { Text("允许AI在后台拍照并识别图像内容（物体、场景、文字等），照片会发送给AI进行视觉分析") },
                         trailingContent = {
                             Switch(
                                 checked = systemToolsSetting.cameraAccess,
                                 onCheckedChange = { enabled ->
-                                    if (enabled && !cameraPermissionState.allPermissionsGranted) {
-                                        cameraPermissionState.requestPermissions()
-                                    }
-                                    updateSystemToolsSetting(
-                                        systemToolsSetting.copy(cameraAccess = enabled)
-                                    )
+                                    if (enabled && !cameraPermissionState.allPermissionsGranted) cameraPermissionState.requestPermissions()
+                                    updateSystemToolsSetting(systemToolsSetting.copy(cameraAccess = enabled))
                                 }
                             )
                         }
@@ -544,11 +402,7 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                             headlineContent = { Text("⚠ 相机权限未授予") },
                             supportingContent = { Text("点击授权按钮授予相机权限") },
                             trailingContent = {
-                                FilledTonalButton(onClick = {
-                                    cameraPermissionState.requestPermissions()
-                                }) {
-                                    Text("授权")
-                                }
+                                FilledTonalButton(onClick = { cameraPermissionState.requestPermissions() }) { Text("授权") }
                             }
                         )
                     }
@@ -562,35 +416,34 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                     modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
                     item(
-                        leadingContent = {
-                            Icon(
-                                imageVector = HugeIcons.Watch01,
-                                contentDescription = null
-                            )
-                        },
+                        leadingContent = { Icon(imageVector = HugeIcons.Watch01, contentDescription = null) },
                         headlineContent = { Text("启用 Gadgetbridge 工具") },
-                        supportingContent = {
-                            Text("允许AI读取手表的健康数据（步数、心率、睡眠等），需要存储权限和 Gadgetbridge 开启自动导出")
-                        },
+                        supportingContent = { Text("允许AI读取手表的健康数据（步数、心率、睡眠等），需要存储权限和 Gadgetbridge 开启自动导出") },
                         trailingContent = {
                             Switch(
                                 checked = systemToolsSetting.gadgetbridgeEnabled,
-                                onCheckedChange = { enabled ->
-                                    updateSystemToolsSetting(
-                                        systemToolsSetting.copy(gadgetbridgeEnabled = enabled)
-                                    )
-                                }
+                                onCheckedChange = { enabled -> updateSystemToolsSetting(systemToolsSetting.copy(gadgetbridgeEnabled = enabled)) }
                             )
                         }
                     )
                     if (systemToolsSetting.gadgetbridgeEnabled) {
-                        // Check storage permission FIRST - without permission, File.exists() returns false
+                        item(
+                            headlineContent = { Text("数据库文件路径") },
+                            supportingContent = {
+                                TextField(
+                                    value = systemToolsSetting.gadgetbridgeDbPath,
+                                    onValueChange = { path -> updateSystemToolsSetting(systemToolsSetting.copy(gadgetbridgeDbPath = path)) },
+                                    placeholder = { Text("/sdcard/Download/手环/Gadgetbridge.db（留空使用默认路径）") },
+                                    modifier = Modifier.fillMaxSize(), singleLine = true,
+                                    shape = MaterialTheme.shapes.small,
+                                    colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent)
+                                )
+                            }
+                        )
                         val hasStoragePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                             android.os.Environment.isExternalStorageManager()
                         } else {
-                            android.content.pm.PackageManager.PERMISSION_GRANTED == androidx.core.content.ContextCompat.checkSelfPermission(
-                                context, android.Manifest.permission.READ_EXTERNAL_STORAGE
-                            )
+                            android.content.pm.PackageManager.PERMISSION_GRANTED == androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_EXTERNAL_STORAGE)
                         }
                         if (!hasStoragePermission) {
                             item(
@@ -604,47 +457,75 @@ fun SettingSystemToolsPage(vm: SettingVM = koinViewModel()) {
                                                 intent.data = android.net.Uri.parse("package:${context.packageName}")
                                                 context.startActivity(intent)
                                             } catch (_: Exception) {
-                                                try {
-                                                    context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-                                                } catch (_: Exception) {}
+                                                try { context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) } catch (_: Exception) {}
                                             }
                                         }
-                                    }) {
-                                        Text("授权")
-                                    }
+                                    }) { Text("授权") }
                                 }
                             )
                         }
-                        // Only check DB file if we have storage permission
-                        val dbExists = if (hasStoragePermission) GadgetbridgeReader.dbFileExists() else false
+                        val dbExists = if (hasStoragePermission) GadgetbridgeReader.dbFileExists(systemToolsSetting.gadgetbridgeDbPath) else false
                         if (hasStoragePermission && !dbExists) {
                             item(
                                 headlineContent = { Text("⚠ 数据库文件未找到") },
-                                supportingContent = { Text("请在 Gadgetbridge 设置中开启\"自动导出\"功能，数据库路径应为 /sdcard/Download/手环/Gadgetbridge.db") }
+                                supportingContent = { Text("请在 Gadgetbridge 设置中开启\"自动导出\"功能。默认路径: /sdcard/Download/手环/Gadgetbridge.db") }
                             )
                         }
-                        // Check Gadgetbridge installation
-                        val gbInstalled = try {
-                            context.packageManager.getPackageInfo("nodomain.freeyourgadget.gadgetbridge", 0) != null
-                        } catch (_: Exception) { false }
+                        val gbInstalled = try { context.packageManager.getPackageInfo("nodomain.freeyourgadget.gadgetbridge", 0) != null } catch (_: Exception) { false }
                         if (!gbInstalled) {
-                            item(
-                                headlineContent = { Text("⚠ Gadgetbridge 未安装") },
-                                supportingContent = { Text("请先安装 Gadgetbridge 应用并配对您的穿戴设备") }
-                            )
+                            item(headlineContent = { Text("⚠ Gadgetbridge 未安装") }, supportingContent = { Text("请先安装 Gadgetbridge 应用并配对您的穿戴设备") })
                         } else if (dbExists && hasStoragePermission) {
-                            item(
-                                headlineContent = { Text("✓ 数据读取正常") },
-                                supportingContent = { Text("已找到数据库文件并拥有存储权限，AI可以读取健康数据") }
-                            )
+                            item(headlineContent = { Text("✓ 数据读取正常") }, supportingContent = { Text("已找到数据库文件并拥有存储权限，AI可以读取健康数据") })
                         }
                     }
                 }
             }
 
+            // 闹钟管理
+            item {
+                CardGroup(
+                    title = { Text("闹钟管理") },
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) {
+                    item(
+                        leadingContent = { Icon(imageVector = HugeIcons.Watch01, contentDescription = null) },
+                        headlineContent = { Text("启用闹钟工具") },
+                        supportingContent = { Text("允许AI查看、设置和删除设备闹钟，需要设置精确闹钟权限") },
+                        trailingContent = {
+                            Switch(
+                                checked = systemToolsSetting.alarmEnabled,
+                                onCheckedChange = { enabled -> updateSystemToolsSetting(systemToolsSetting.copy(alarmEnabled = enabled)) }
+                            )
+                        }
+                    )
+                    if (systemToolsSetting.alarmEnabled) {
+                        item(
+                            headlineContent = { Text("闹钟权限状态") },
+                            supportingContent = {
+                                val alarmManager = context.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
+                                val canScheduleExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) alarmManager.canScheduleExactAlarms() else true
+                                if (canScheduleExact) Text("✓ 已拥有精确闹钟权限") else Text("⚠ 需要在系统设置中授予精确闹钟权限")
+                            },
+                            trailingContent = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    val alarmManager = context.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
+                                    if (!alarmManager.canScheduleExactAlarms()) {
+                                        FilledTonalButton(onClick = {
+                                            try { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)) } catch (_: Exception) {}
+                                        }) { Text("去设置") }
+                                    }
+                                }
+                            }
+                        )
+                        item(
+                            headlineContent = { Text("说明") },
+                            supportingContent = { Text("AI 可以查看所有闹钟、创建新闹钟、删除闹钟以及计算距下一个闹钟的时间。闹钟通过系统时钟应用设置。") }
+                        )
+                    }
+                }
+            }
         }
 
-        // 权限管理器
         PermissionManager(permissionState = locationPermissionState)
         PermissionManager(permissionState = notificationPermissionState)
         PermissionManager(permissionState = cameraPermissionState)
