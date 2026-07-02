@@ -29,6 +29,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.ClassDiscriminatorMode
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.AppScope
@@ -153,14 +156,134 @@ class McpManager(
             options = RequestOptions(timeout = 120.seconds),
         )
         return result.content.map {
-            when(it) {
-                is TextContent -> UIMessagePart.Text(it.text)
+            when (it) {
+                is TextContent -> convertTextContentToAudioPart(it.text) ?: UIMessagePart.Text(it.text)
                 is ImageContent -> convertImageContentToFilePart(it)
                 else -> UIMessagePart.Text(JsonInstant.encodeToString(it))
             }
         }
     }
 
+    private suspend fun convertTextContentToAudioPart(text: String): UIMessagePart.Audio? {
+        val payload = runCatching { JsonInstant.parseToJsonElement(text).jsonObject }.getOrNull() ?: return null
+        val nestedData = payload["data"]?.jsonObjectOrNull()
+        val declaredMimeType = payload.string("mimeType")
+            ?: payload.string("mime")
+            ?: payload.string("mediaType")
+            ?: payload.string("contentType")
+            ?: nestedData?.let {
+                it.string("mimeType") ?: it.string("mime") ?: it.string("mediaType") ?: it.string("contentType")
+            }
+        val mimeType = declaredMimeType ?: "audio/mpeg"
+        val declaredType = payload.string("type")
+            ?: payload.string("kind")
+            ?: nestedData?.let { it.string("type") ?: it.string("kind") }
+        val looksLikeAudio = declaredType?.contains("audio", ignoreCase = true) == true ||
+            declaredType?.contains("voice", ignoreCase = true) == true ||
+            declaredMimeType?.startsWith("audio/", ignoreCase = true) == true
+
+        val url = payload.string("url")
+            ?: payload.string("audioUrl")
+            ?: payload.string("audio_url")
+            ?: payload.string("fileUrl")
+            ?: nestedData?.let {
+                it.string("url") ?: it.string("audioUrl") ?: it.string("audio_url") ?: it.string("fileUrl")
+            }
+        if (url != null && (looksLikeAudio || url.isAudioUrl())) {
+            return UIMessagePart.Audio(url = url)
+        }
+
+        val encodedAudio = payload.string("audio")
+            ?: payload.string("base64")
+            ?: payload.string("data")
+            ?: payload.string("content")
+            ?: nestedData?.let {
+                it.string("audio") ?: it.string("base64") ?: it.string("data") ?: it.string("content")
+            }
+            ?: return null
+
+        if (!looksLikeAudio && !encodedAudio.startsWith("data:audio/", ignoreCase = true)) {
+            return null
+        }
+
+        val encoding = payload.string("encoding")
+            ?: payload.string("output_format")
+            ?: payload.string("format")
+            ?: nestedData?.let {
+                it.string("encoding") ?: it.string("output_format") ?: it.string("format")
+            }
+        val bytes = decodeAudioPayload(encodedAudio, encoding) ?: return null
+        val entity = filesManager.saveUploadFromBytes(
+            bytes = bytes,
+            displayName = "mcp_audio.${audioExtension(mimeType)}",
+            mimeType = mimeType,
+        )
+        val uri = filesManager.getFile(entity).toUri()
+        Log.i(TAG, "convertTextContentToAudioPart: saved mcp audio to $uri")
+        return UIMessagePart.Audio(url = uri.toString())
+    }
+
+    private fun decodeAudioPayload(value: String, encoding: String?): ByteArray? {
+        val trimmed = value.trim()
+        val dataPayload = if (trimmed.startsWith("data:audio/", ignoreCase = true)) {
+            trimmed.substringAfter("base64,", missingDelimiterValue = "")
+        } else {
+            trimmed
+        }
+        if (dataPayload.isBlank()) return null
+
+        return runCatching {
+            when {
+                encoding.equals("hex", ignoreCase = true) || dataPayload.isHexAudioPayload() ->
+                    dataPayload.hexToBytes()
+                else -> Base64.decode(dataPayload)
+            }
+        }.getOrNull()
+    }
+
+    private fun String.isHexAudioPayload(): Boolean {
+        val compact = replace("\\s+".toRegex(), "")
+        return compact.length > 16 &&
+            compact.length % 2 == 0 &&
+            compact.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
+    }
+
+    private fun String.hexToBytes(): ByteArray {
+        val compact = replace("\\s+".toRegex(), "")
+        return ByteArray(compact.length / 2) { index ->
+            compact.substring(index * 2, index * 2 + 2).toInt(16).toByte()
+        }
+    }
+
+    private fun JsonObject.string(key: String): String? =
+        this[key]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+
+    private fun kotlinx.serialization.json.JsonElement.jsonObjectOrNull(): JsonObject? =
+        runCatching { jsonObject }.getOrNull()
+
+    private fun String.isAudioUrl(): Boolean {
+        val clean = substringBefore('?').lowercase()
+        return clean.startsWith("file:") ||
+            clean.startsWith("content:") ||
+            clean.endsWith(".mp3") ||
+            clean.endsWith(".wav") ||
+            clean.endsWith(".m4a") ||
+            clean.endsWith(".aac") ||
+            clean.endsWith(".ogg") ||
+            clean.endsWith(".opus")
+    }
+
+    private fun audioExtension(mimeType: String): String {
+        return android.webkit.MimeTypeMap.getSingleton()
+            .getExtensionFromMimeType(mimeType)
+            ?: when (mimeType.lowercase()) {
+                "audio/wav", "audio/x-wav", "audio/wave" -> "wav"
+                "audio/aac" -> "aac"
+                "audio/ogg" -> "ogg"
+                "audio/opus" -> "opus"
+                else -> "mp3"
+            }
+    }
     private suspend fun convertImageContentToFilePart(image: ImageContent): UIMessagePart.Image {
         val bytes = Base64.decode(image.data)
         val ext = android.webkit.MimeTypeMap.getSingleton()
