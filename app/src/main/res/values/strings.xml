@@ -10,7 +10,7 @@
   <string name="about_page_upstream_desc">https://github.com/rikkahub/rikkahub</string>
   <string name="about_page_derivation_notice">本项目【橘瓣】基于 RikkaHub 二次开发而成。橘瓣是独立项目，其功能与问题由本项目自行维护。请不要因为本项目去打扰 RikkaHub 原作者以及各位开源贡献者。感谢他们的付出与开源精神。</string>
   <string name="add">Add</string>
-  <string name="app_name">橘瓣</string>
+  <string name="app_name">橘瓣·玻璃</string>
   <string name="asr_button_content_description">Speech Recognition</string>
   <string name="asr_button_stop">Stop</string>
   <string name="assistant_detail_basic_desc">Configure name, avatar, model, and parameters</string>
@@ -1109,6 +1109,8 @@
   <string name="theme_name_black">Neutral Black</string>
     <string name="theme_name_ocean">Ocean Blue</string>
     <string name="theme_name_pearltide">Pearl Tide</string>
+    <string name="theme_name_harbor">Harbor</string>
+    <string name="theme_name_minimal">Minimal White</string>
   <string name="theme_name_sakura">Sakura Pink</string>
   <string name="theme_name_spring">Meadow Green</string>
   <string name="title_activity_safe_mode">Safe Mode</string>
@@ -1234,3 +1236,4 @@
   <string name="plugin_security_banner">⚠ Plugins can make network requests and access system data you have authorized. Only install plugins from trusted sources.</string>
   <string name="web_server_security_warning_no_jwt">⚠ JWT authentication is not enabled or the password is empty. Anyone who can access this address can read your conversation records. It is strongly recommended to set a password and enable JWT immediately.</string>
 </resources>
+

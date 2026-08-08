@@ -160,7 +160,6 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                 val selectedColorModeText = when (colorMode) {
                     ColorMode.SYSTEM -> stringResource(R.string.setting_page_color_mode_system)
                     ColorMode.LIGHT -> stringResource(R.string.setting_page_color_mode_light)
-                    ColorMode.DARK -> stringResource(R.string.setting_page_color_mode_dark)
                 }
                 CardGroup(
                     modifier = Modifier.padding(horizontal = 8.dp),
@@ -184,7 +183,6 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                                     when (it) {
                                         ColorMode.SYSTEM -> stringResource(R.string.setting_page_color_mode_system)
                                         ColorMode.LIGHT -> stringResource(R.string.setting_page_color_mode_light)
-                                        ColorMode.DARK -> stringResource(R.string.setting_page_color_mode_dark)
                                     }
                                 },
                                 modifier = Modifier.width(150.dp)

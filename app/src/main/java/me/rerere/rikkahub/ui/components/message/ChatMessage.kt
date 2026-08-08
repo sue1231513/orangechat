@@ -18,6 +18,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,7 +57,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -96,6 +99,8 @@ import me.rerere.hugeicons.stroke.PauseCircle
 import me.rerere.hugeicons.stroke.Video01
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
+import me.rerere.rikkahub.data.ai.mood.FxTagProcessor
+import me.rerere.rikkahub.data.ai.mood.MoodMode
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.AssistantAffectScope
 import me.rerere.rikkahub.data.model.MessageNode
@@ -118,6 +123,9 @@ import me.rerere.rikkahub.utils.JsonInstant
 import me.rerere.rikkahub.utils.base64Encode
 import me.rerere.rikkahub.utils.openUrl
 import coil3.compose.AsyncImage
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
 import me.rerere.rikkahub.utils.splitIntoBubbleSegments
 import me.rerere.rikkahub.utils.urlDecode
 import java.util.Locale
@@ -130,6 +138,8 @@ fun ChatMessage(
     loading: Boolean = false,
     model: Model? = null,
     assistant: Assistant? = null,
+    hazeState: HazeState? = null,
+    moodMode: MoodMode = MoodMode.OFF,
     lastMessage: Boolean = false,
     onFork: () -> Unit,
     onRegenerate: () -> Unit,
@@ -204,6 +214,8 @@ fun ChatMessage(
                 annotations = message.annotations,
                 loading = loading,
                 model = model,
+                hazeState = hazeState,
+                moodMode = moodMode,
                 onToolApproval = onToolApproval,
                 onToolAnswer = onToolAnswer,
                 onUserMessageClick = if (message.role == MessageRole.USER) onEdit else null,
@@ -301,6 +313,8 @@ private fun MessagePartsBlock(
     parts: List<UIMessagePart>,
     annotations: List<UIMessageAnnotation>,
     loading: Boolean,
+    hazeState: HazeState?,
+    moodMode: MoodMode,
     onToolApproval: ((toolCallId: String, approved: Boolean, reason: String) -> Unit)? = null,
     onToolAnswer: ((toolCallId: String, answer: String) -> Unit)? = null,
     onUserMessageClick: (() -> Unit)? = null,
@@ -312,6 +326,10 @@ private fun MessagePartsBlock(
     val hapticFeedback = LocalHapticFeedback.current
     val displaySettings = LocalDisplaySettings.current
     val bubbleAlpha = 1f - displaySettings.chatBubbleTransparency / 100f
+    // Inline FX prefers bare text so glow/big/red are not boxed in a bubble.
+    // Full-screen mood skins are disabled in this build, so moodMode never
+    // forces bare text. Bubble settings are never written back.
+    val glassBubblesEnabled = displaySettings.enableGlassBubbles
     val partsState by rememberUpdatedState(parts)
  
     val handleClickCitation: (String) -> Unit = remember {
@@ -391,7 +409,14 @@ private fun MessagePartsBlock(
                         val displayText = remember(part.text) {
                             part.text.replace(Regex("\\[zip:[^\\]]+\\]", RegexOption.IGNORE_CASE), "")
                         }
-                        
+                        // Bare text only when this message carries inline Pelle FX tags.
+                        val hasInlineFx = remember(displayText) {
+                            FxTagProcessor.extract(displayText).tags.isNotEmpty()
+                        }
+                        val forceBareText = hasInlineFx
+                        val showUserBubble = !forceBareText
+                        val showAssistantBubble = !forceBareText && displaySettings.showAssistantBubble
+
                         SelectionContainer {
                             Column {
                                 if (role == MessageRole.USER) {
@@ -407,42 +432,80 @@ private fun MessagePartsBlock(
                                         ) {
                                             bubbleSegments.fastForEachIndexed { segIndex, segment ->
                                                 key(segIndex) {
-                                                    BubbleSurface(
-                                                        imagePath = displaySettings.userBubbleImagePath,
-                                                        cornerRadius = displaySettings.bubbleCornerRadius.dp,
-                                                        color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
-                                                        overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
-                                                        bubbleAlpha = bubbleAlpha,
-                                                        onClick = { onUserMessageClick?.invoke() },
-                                                    ) {
+                                                    val content = segment.replaceRegexes(
+                                                        assistant = assistant,
+                                                        scope = AssistantAffectScope.USER,
+                                                        visual = true,
+                                                    )
+                                                    if (showUserBubble) {
+                                                        BubbleSurface(
+                                                            imagePath = displaySettings.userBubbleImagePath,
+                                                            cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                                            color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
+                                                            overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
+                                                            bubbleAlpha = bubbleAlpha,
+                                                            glassEnabled = glassBubblesEnabled,
+                                                            hazeState = hazeState,
+                                                            onClick = { onUserMessageClick?.invoke() },
+                                                        ) {
+                                                            MarkdownBlock(
+                                                                content = content,
+                                                                onClickCitation = handleClickCitation
+                                                            )
+                                                        }
+                                                    } else {
                                                         MarkdownBlock(
-                                                            content = segment.replaceRegexes(
-                                                                assistant = assistant,
-                                                                scope = AssistantAffectScope.USER,
-                                                                visual = true,
-                                                            ),
-                                                            onClickCitation = handleClickCitation
+                                                            content = content,
+                                                            onClickCitation = handleClickCitation,
+                                                            modifier = Modifier
+                                                                .animateContentSize()
+                                                                .then(
+                                                                    if (onUserMessageClick != null) {
+                                                                        Modifier.clickable { onUserMessageClick.invoke() }
+                                                                    } else {
+                                                                        Modifier
+                                                                    }
+                                                                ),
                                                         )
                                                     }
                                                 }
                                             }
                                         }
                                     } else {
-                                        BubbleSurface(
-                                            imagePath = displaySettings.userBubbleImagePath,
-                                            cornerRadius = displaySettings.bubbleCornerRadius.dp,
-                                            color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
-                                            overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
-                                            bubbleAlpha = bubbleAlpha,
-                                            onClick = { onUserMessageClick?.invoke() },
-                                        ) {
+                                        val content = displayText.replaceRegexes(
+                                            assistant = assistant,
+                                            scope = AssistantAffectScope.USER,
+                                            visual = true,
+                                        )
+                                        if (showUserBubble) {
+                                            BubbleSurface(
+                                                imagePath = displaySettings.userBubbleImagePath,
+                                                cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                                color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
+                                                overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
+                                                bubbleAlpha = bubbleAlpha,
+                                                glassEnabled = glassBubblesEnabled,
+                                                hazeState = hazeState,
+                                                onClick = { onUserMessageClick?.invoke() },
+                                            ) {
+                                                MarkdownBlock(
+                                                    content = content,
+                                                    onClickCitation = handleClickCitation
+                                                )
+                                            }
+                                        } else {
                                             MarkdownBlock(
-                                                content = displayText.replaceRegexes(
-                                                    assistant = assistant,
-                                                    scope = AssistantAffectScope.USER,
-                                                    visual = true,
-                                                ),
-                                                onClickCitation = handleClickCitation
+                                                content = content,
+                                                onClickCitation = handleClickCitation,
+                                                modifier = Modifier
+                                                    .animateContentSize()
+                                                    .then(
+                                                        if (onUserMessageClick != null) {
+                                                            Modifier.clickable { onUserMessageClick.invoke() }
+                                                        } else {
+                                                            Modifier
+                                                        }
+                                                    ),
                                             )
                                         }
                                     }
@@ -457,30 +520,29 @@ private fun MessagePartsBlock(
                                     ) {
                                         bubbleSegments.fastForEachIndexed { segIndex, segment ->
                                             key(segIndex) {
-                                                if (displaySettings.showAssistantBubble) {
+                                                val content = segment.replaceRegexes(
+                                                    assistant = assistant,
+                                                    scope = AssistantAffectScope.ASSISTANT,
+                                                    visual = true,
+                                                )
+                                                if (showAssistantBubble) {
                                                     BubbleSurface(
                                                         imagePath = displaySettings.assistantBubbleImagePath,
                                                         cornerRadius = displaySettings.bubbleCornerRadius.dp,
                                                         color = displaySettings.assistantBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                                                         overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                                         bubbleAlpha = bubbleAlpha,
+                                                        glassEnabled = glassBubblesEnabled,
+                                                        hazeState = hazeState,
                                                     ) {
                                                         MarkdownBlock(
-                                                            content = segment.replaceRegexes(
-                                                                assistant = assistant,
-                                                                scope = AssistantAffectScope.ASSISTANT,
-                                                                visual = true,
-                                                            ),
+                                                            content = content,
                                                             onClickCitation = handleClickCitation,
                                                         )
                                                     }
                                                 } else {
                                                     MarkdownBlock(
-                                                        content = segment.replaceRegexes(
-                                                            assistant = assistant,
-                                                            scope = AssistantAffectScope.ASSISTANT,
-                                                            visual = true,
-                                                        ),
+                                                        content = content,
                                                         onClickCitation = handleClickCitation,
                                                         modifier = Modifier
                                                             .animateContentSize()
@@ -490,30 +552,29 @@ private fun MessagePartsBlock(
                                         }
                                     }
                                 } else {
-                                    if (displaySettings.showAssistantBubble) {
+                                    val content = displayText.replaceRegexes(
+                                        assistant = assistant,
+                                        scope = AssistantAffectScope.ASSISTANT,
+                                        visual = true,
+                                    )
+                                    if (showAssistantBubble) {
                                         BubbleSurface(
                                             imagePath = displaySettings.assistantBubbleImagePath,
                                             cornerRadius = displaySettings.bubbleCornerRadius.dp,
                                             color = displaySettings.assistantBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                                             overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                             bubbleAlpha = bubbleAlpha,
+                                            glassEnabled = glassBubblesEnabled,
+                                            hazeState = hazeState,
                                         ) {
                                             MarkdownBlock(
-                                                content = displayText.replaceRegexes(
-                                                    assistant = assistant,
-                                                    scope = AssistantAffectScope.ASSISTANT,
-                                                    visual = true,
-                                                ),
+                                                content = content,
                                                 onClickCitation = handleClickCitation,
                                             )
                                         }
                                     } else {
                                         MarkdownBlock(
-                                            content = displayText.replaceRegexes(
-                                                assistant = assistant,
-                                                scope = AssistantAffectScope.ASSISTANT,
-                                                visual = true,
-                                            ),
+                                            content = content,
                                             onClickCitation = handleClickCitation,
                                             modifier = Modifier
                                                 .animateContentSize()
@@ -722,6 +783,8 @@ private fun BubbleSurface(
     color: Color,
     overlayEnabled: Boolean,
     bubbleAlpha: Float,
+    glassEnabled: Boolean,
+    hazeState: HazeState?,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -748,11 +811,79 @@ private fun BubbleSurface(
             }
             Column(modifier = Modifier.padding(8.dp)) { content() }
         }
+    } else if (glassEnabled) {
+        val shape = RoundedCornerShape(cornerRadius)
+        // Stronger iOS liquid glass: more translucency + brighter rim in light mode,
+        // cooler frost + higher contrast rim in dark mode. Both should read clearly.
+        val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+        val tintAlpha = if (isDark) {
+            (0.22f + bubbleAlpha * 0.20f).coerceIn(0.22f, 0.42f)
+        } else {
+            (0.10f + bubbleAlpha * 0.14f).coerceIn(0.10f, 0.26f)
+        }
+        val rimTop = if (isDark) Color.White.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.78f)
+        val rimBottom = if (isDark) {
+            Color.White.copy(alpha = 0.10f)
+        } else {
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)
+        }
+        val sheenTop = if (isDark) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.34f)
+        val sheenMid = color.copy(alpha = tintAlpha)
+        val sheenBottom = if (isDark) Color.Black.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f)
+
+        val glassModifier = Modifier
+            .animateContentSize()
+            .clip(shape)
+            .then(
+                if (hazeState != null) {
+                    Modifier.hazeEffect(
+                        state = hazeState,
+                        style = HazeMaterials.thin(containerColor = color.copy(alpha = tintAlpha)),
+                    )
+                } else {
+                    Modifier.background(color.copy(alpha = tintAlpha + if (isDark) 0.08f else 0.04f))
+                }
+            )
+            .border(
+                width = 1.1.dp,
+                brush = Brush.verticalGradient(colors = listOf(rimTop, rimBottom)),
+                shape = shape,
+            )
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+
+        Box(modifier = glassModifier) {
+            // Inner sheen: bright top, tinted body, soft bottom — glass edge catch light.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(sheenTop, sheenMid, sheenBottom)
+                        )
+                    )
+            )
+            // Second pass: subtle side highlight so bubbles don't look flat on plain bg.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = if (isDark) 0.08f else 0.14f),
+                                Color.Transparent,
+                                Color.Black.copy(alpha = if (isDark) 0.10f else 0.04f),
+                            )
+                        )
+                    )
+            )
+            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) { content() }
+        }
     } else {
         Surface(
             modifier = Modifier.animateContentSize(),
             shape = RoundedCornerShape(cornerRadius),
-            color = color.copy(alpha = bubbleAlpha),
+            color = color,
+            tonalElevation = 0.dp,
             onClick = onClick ?: {},
         ) {
             Column(modifier = Modifier.padding(8.dp)) { content() }

@@ -94,6 +94,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.rerere.ai.core.MessageRole
+import me.rerere.rikkahub.data.ai.mood.MoodMode
 import me.rerere.ai.ui.UIMessage
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.Settings
@@ -123,6 +124,7 @@ fun ChatList(
     state: LazyListState,
     loading: Boolean,
     processingStatus: String? = null,
+    moodMode: MoodMode = MoodMode.OFF,
     previewMode: Boolean,
     settings: Settings,
     hazeState: HazeState,
@@ -166,6 +168,7 @@ fun ChatList(
                 state = state,
                 loading = loading,
                 processingStatus = processingStatus,
+                moodMode = moodMode,
                 settings = settings,
                 hazeState = hazeState,
                 errors = errors,
@@ -196,6 +199,7 @@ private fun ChatListNormal(
     state: LazyListState,
     loading: Boolean,
     processingStatus: String? = null,
+    moodMode: MoodMode,
     settings: Settings,
     hazeState: HazeState,
     errors: List<ChatError>,
@@ -339,6 +343,8 @@ private fun ChatListNormal(
                             node = node,
                             model = node.currentMessage.modelId?.let { settings.findModelById(it) },
                             assistant = settings.getAssistantById(conversation.assistantId),
+                            hazeState = hazeState,
+                            moodMode = moodMode,
                             loading = loading && index == displayNodes.lastIndex,
                             onRegenerate = {
                                 onRegenerate(node.currentMessage)

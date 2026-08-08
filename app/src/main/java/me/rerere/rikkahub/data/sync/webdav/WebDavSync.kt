@@ -272,6 +272,12 @@ class WebDavSync(
 
                         "rikka_hub.db", "rikka_hub-wal", "rikka_hub-shm" -> {
                             if (config.items.contains(WebDavConfig.BackupItem.DATABASE)) {
+                                // Kill leftover WAL journal before overwriting
+                                val dbParent = context.getDatabasePath("rikka_hub").parentFile
+                                dbParent?.let { d ->
+                                    File(d, "rikka_hub-wal").delete()
+                                    File(d, "rikka_hub-shm").delete()
+                                }
                                 val dbFile = when (zipEntry.name) {
                                     "rikka_hub.db" -> context.getDatabasePath("rikka_hub")
                                     "rikka_hub-wal" -> File(

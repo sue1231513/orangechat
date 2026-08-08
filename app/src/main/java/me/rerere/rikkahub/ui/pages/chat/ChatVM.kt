@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
@@ -42,6 +42,7 @@ import me.rerere.rikkahub.data.repository.ConversationRepository
 import me.rerere.rikkahub.data.repository.FavoriteRepository
 import me.rerere.rikkahub.service.ChatError
 import me.rerere.rikkahub.service.ChatService
+import me.rerere.rikkahub.data.ai.mood.MoodMode
 import me.rerere.rikkahub.ui.hooks.writeStringPreference
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 import me.rerere.rikkahub.utils.UiState
@@ -77,6 +78,10 @@ class ChatVM(
     val processingStatus: StateFlow<String?> =
         chatService
             .getProcessingStatusFlow(_conversationId)
+
+    val moodMode: StateFlow<MoodMode> =
+        chatService
+            .getMoodModeFlow(_conversationId)
 
     val conversationJobs = chatService
         .getConversationJobs()
@@ -347,6 +352,43 @@ class ChatVM(
                 )
             }
         }
+    }
+
+
+
+    // --- Moodlet favorites & bonus reply ---
+    private val moodletFavorites = mutableSetOf<String>()
+
+    fun isMoodletFavorited(moodKey: String): Boolean = moodletFavorites.contains(moodKey)
+
+    fun setMoodletFavorited(
+        conversationId: Uuid,
+        conversationTitle: String,
+        moodKey: String,
+        favorited: Boolean,
+        label: String,
+        reason: String,
+    ) {
+        viewModelScope.launch {
+            if (favorited) moodletFavorites.add(moodKey) else moodletFavorites.remove(moodKey)
+            favoriteRepository.setMoodletFavorited(
+                conversationId = conversationId,
+                conversationTitle = conversationTitle,
+                moodKey = moodKey,
+                favorited = favorited,
+                label = label,
+                reason = reason,
+            )
+        }
+    }
+
+    fun sendBonusMessage(conversationId: Uuid, text: String) {
+        if (text.isBlank()) return
+        chatService.sendMessage(
+            conversationId,
+            content = listOf(UIMessagePart.Text(text)),
+            answer = true,
+        )
     }
 
 }

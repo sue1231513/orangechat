@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
@@ -50,6 +50,11 @@ import com.dokar.sonner.ToastType
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
+import me.rerere.rikkahub.ui.context.MoodletActions
+import me.rerere.rikkahub.ui.context.LocalMoodletActions
+import me.rerere.rikkahub.data.ai.mood.MoodMode
 import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.hugeicons.HugeIcons
@@ -96,6 +101,7 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null, au
 
     val setting by vm.settings.collectAsStateWithLifecycle()
     val conversation by vm.conversation.collectAsStateWithLifecycle()
+    val moodMode by vm.moodMode.collectAsStateWithLifecycle()
     val loadingJob by vm.conversationJob.collectAsStateWithLifecycle()
     val processingStatus by vm.processingStatus.collectAsStateWithLifecycle()
     val currentChatModel by vm.currentChatModel.collectAsStateWithLifecycle()
@@ -184,6 +190,7 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null, au
                     inputState = inputState,
                     loadingJob = loadingJob,
                     processingStatus = processingStatus,
+                    moodMode = moodMode,
                     setting = setting,
                     conversation = conversation,
                     drawerState = drawerState,
@@ -217,6 +224,7 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null, au
                     inputState = inputState,
                     loadingJob = loadingJob,
                     processingStatus = processingStatus,
+                    moodMode = moodMode,
                     setting = setting,
                     conversation = conversation,
                     drawerState = drawerState,
@@ -244,6 +252,7 @@ private fun ChatPageContent(
     inputState: ChatInputState,
     loadingJob: Job?,
     processingStatus: String? = null,
+    moodMode: MoodMode = MoodMode.OFF,
     setting: Settings,
     bigScreen: Boolean,
     conversation: Conversation,
@@ -265,12 +274,14 @@ private fun ChatPageContent(
 
     TTSAutoPlay(vm = vm, setting = setting, conversation = conversation)
 
-    Surface(
-        color = MaterialTheme.colorScheme.background,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        AssistantBackground(setting = setting)
-        Scaffold(
+    // Full-screen emotional skins are disabled in this build.
+    MaterialTheme(colorScheme = MaterialTheme.colorScheme) {
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            AssistantBackground(setting = setting)
+            Scaffold(
             topBar = {
                 TopBar(
                     settings = setting,
@@ -333,6 +344,24 @@ private fun ChatPageContent(
                             vm.handleMessageSend(inputState.getContents())
                             scope.launch {
                                 chatListState.requestScrollToItem(conversation.currentMessages.size + 5)
+                            }
+                            // Play custom send sound if configured
+                            val soundPath = setting.displaySetting.sendSoundPath
+                            if (soundPath.isNotBlank()) {
+                                try {
+                                    val soundFile = java.io.File(soundPath)
+                                    if (soundFile.exists()) {
+                                        val mediaPlayer = android.media.MediaPlayer()
+                                        mediaPlayer.setDataSource(soundPath)
+                                        mediaPlayer.setOnPreparedListener { mp -> mp.start() }
+                                        mediaPlayer.setOnCompletionListener { mp ->
+                                            mp.release()
+                                        }
+                                        mediaPlayer.prepareAsync()
+                                    }
+                                } catch (e: Exception) {
+                                    // ignore sound errors
+                                }
                             }
                         }
                         inputState.clearInput()
@@ -399,12 +428,30 @@ private fun ChatPageContent(
             },
             containerColor = Color.Transparent,
         ) { innerPadding ->
+            val moodletCtx = remember(conversation.id) {
+                MoodletActions(
+                    isFavorited = { key ->
+                        vm.isMoodletFavorited(key)
+                    },
+                    setFavorited = { key, fav, label, reason ->
+                        vm.setMoodletFavorited(conversation.id, conversation.title, key, fav, label, reason)
+                    },
+                    onTripleLike = { key, label, reason ->
+                        vm.sendBonusMessage(
+                            conversation.id,
+                            "（用户对你的[${label}]情绪徽章点了三连赞）\n${reason}",
+                        )
+                    },
+                )
+            }
+            CompositionLocalProvider(LocalMoodletActions provides moodletCtx) {
             ChatList(
                 innerPadding = innerPadding,
                 conversation = conversation,
                 state = chatListState,
                 loading = loadingJob != null,
                 processingStatus = processingStatus,
+                moodMode = moodMode,
                 previewMode = previewMode,
                 settings = setting,
                 hazeState = hazeState,
@@ -474,6 +521,8 @@ private fun ChatPageContent(
                     vm.saveConversationAsync()
                 },
             )
+            }
+            }
         }
     }
 }

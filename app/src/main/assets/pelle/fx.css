@@ -1,0 +1,70 @@
+/* Pelle d'Umore — Emotional Skin for AI Chat | CC BY 4.0 — Attribution required | Created by Cu & Lunedì (cunedi.uk) */
+/* Copied from https://github.com/29-Cu/pelle-d-umore — kept for WebView preview mode */
+
+.fx-glow {
+  color: var(--accent, oklch(0.72 0.12 305));
+  text-shadow:
+    0 0 calc(3px * var(--fx-glow-mult, 1))  oklch(from var(--accent, oklch(0.72 0.12 305)) l c h / min(0.95, calc(0.55 * var(--fx-glow-mult, 1)))),
+    0 0 calc(9px * var(--fx-glow-mult, 1))  oklch(from var(--accent, oklch(0.72 0.12 305)) l c h / min(0.8,  calc(0.4  * var(--fx-glow-mult, 1)))),
+    0 0 calc(20px * var(--fx-glow-mult, 1)) oklch(from var(--accent, oklch(0.72 0.12 305)) l c h / min(0.6,  calc(0.25 * var(--fx-glow-mult, 1))));
+}
+.fx-big  { font-size: 1.35em; font-weight: 700; }
+.fx-huge { font-size: 1.9em;  font-weight: 800; line-height: 1.12; }
+.fx-whisper {
+  font-size: 0.82em;
+  color: var(--text-dim, oklch(0.62 0.02 305));
+  letter-spacing: 0.01em;
+}
+.fx-red { color: var(--danger, oklch(0.63 0.22 22)); font-weight: 600; }
+.fx-shake {
+  display: inline-block;
+  animation: fx-shake 0.42s cubic-bezier(.36, .07, .19, .97) infinite;
+}
+@keyframes fx-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-1.5px) rotate(-0.5deg); }
+  40% { transform: translateX(1.5px) rotate(0.5deg); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+.fx-blur {
+  filter: blur(5px);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: filter 0.35s ease;
+}
+.fx-blur.fx-revealed { filter: none; cursor: auto; }
+.fx-glitch {
+  position: relative;
+  display: inline-block;
+  color: var(--text, oklch(0.92 0.02 305));
+}
+.fx-glitch::before,
+.fx-glitch::after {
+  content: attr(data-text);
+  position: absolute; left: 0; top: 0;
+  width: 100%; overflow: hidden;
+  pointer-events: none; opacity: 0;
+}
+.fx-glitch::before {
+  color: oklch(0.65 0.2 22);
+  animation: fx-glitch-a 1.7s steps(2, end) infinite;
+}
+.fx-glitch::after {
+  color: oklch(0.72 0.16 200);
+  animation: fx-glitch-b 2.1s steps(2, end) infinite;
+}
+@keyframes fx-glitch-a {
+  0%, 90%, 100% { transform: translate(0); opacity: 0; clip-path: inset(0 0 100% 0); }
+  92% { transform: translate(-2px, -1px); opacity: 0.85; clip-path: inset(0 0 45% 0); }
+  96% { transform: translate(2px, 1px);  opacity: 0.85; clip-path: inset(55% 0 0 0); }
+}
+@keyframes fx-glitch-b {
+  0%, 88%, 100% { transform: translate(0); opacity: 0; clip-path: inset(0 0 100% 0); }
+  90% { transform: translate(2px, 1px);  opacity: 0.7; clip-path: inset(40% 0 25% 0); }
+  94% { transform: translate(-2px, -1px); opacity: 0.7; clip-path: inset(15% 0 55% 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-shake { animation: none; }
+  .fx-glitch::before, .fx-glitch::after { animation: none; opacity: 0; }
+}

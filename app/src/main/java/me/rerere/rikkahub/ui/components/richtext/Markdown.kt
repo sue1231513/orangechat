@@ -34,7 +34,9 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -79,6 +81,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Tick01
+import me.rerere.rikkahub.data.ai.mood.FxTag
+import me.rerere.rikkahub.data.ai.mood.FxTagProcessor
 import me.rerere.rikkahub.ui.components.table.DataTable
 import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.theme.JetbrainsMono
@@ -194,7 +198,10 @@ private data class MarkdownParseResult(
     val preprocessed: String,
     val astTree: ASTNode,
     val hasHtml: Boolean,
+    val fxTags: List<FxTag>,
 )
+
+private val LocalFxTags = compositionLocalOf<List<FxTag>> { emptyList() }
 
 private fun ASTNode.containsHtml(): Boolean {
     if (type == MarkdownElementTypes.HTML_BLOCK || type == MarkdownTokenTypes.HTML_TAG) return true
@@ -202,9 +209,12 @@ private fun ASTNode.containsHtml(): Boolean {
 }
 
 private fun parseMarkdown(content: String): MarkdownParseResult {
-    val preprocessed = preProcess(content)
+    // Pelle tags are converted before Markdown sees their square brackets.
+    // The native Compose renderer restores them as styled text spans later.
+    val fx = FxTagProcessor.extract(content)
+    val preprocessed = preProcess(fx.text)
     val astTree = parser.buildMarkdownTreeFromString(preprocessed)
-    return MarkdownParseResult(preprocessed, astTree, astTree.containsHtml())
+    return MarkdownParseResult(preprocessed, astTree, astTree.containsHtml(), fx.tags)
 }
 
 @Composable
@@ -236,14 +246,16 @@ fun MarkdownBlock(
             onClickCitation = onClickCitation,
         )
     } else {
-        ProvideTextStyle(style) {
-            Column(
-                modifier = modifier.padding(horizontal = 4.dp)
-            ) {
-                data.astTree.children.fastForEach { child ->
-                    MarkdownNode(
-                        node = child, content = data.preprocessed, onClickCitation = onClickCitation
-                    )
+        CompositionLocalProvider(LocalFxTags provides data.fxTags) {
+            ProvideTextStyle(style) {
+                Column(
+                    modifier = modifier.padding(horizontal = 4.dp)
+                ) {
+                    data.astTree.children.fastForEach { child ->
+                        MarkdownNode(
+                            node = child, content = data.preprocessed, onClickCitation = onClickCitation
+                        )
+                    }
                 }
             }
         }
@@ -749,13 +761,14 @@ private fun Paragraph(
 
     val textStyle = LocalTextStyle.current
     val density = LocalDensity.current
+    val fxTags = LocalFxTags.current
     FlowRow(
         modifier = modifier.then(
             if (node.nextSibling() != null) Modifier.padding(bottom = LocalTextStyle.current.fontSize.toDp())
             else Modifier
         )
     ) {
-        val annotatedString = remember(content, enableLatexRendering) {
+        val annotatedString = remember(content, enableLatexRendering, fxTags, colorScheme, textStyle) {
             buildAnnotatedString {
                 node.children.fastForEach { child ->
                     appendMarkdownNodeContent(
@@ -768,6 +781,7 @@ private fun Paragraph(
                         density = density,
                         trim = trim,
                         enableLatexRendering = enableLatexRendering,
+                        fxTags = fxTags,
                     )
                 }
             }
@@ -847,6 +861,7 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
     style: TextStyle,
     enableLatexRendering: Boolean = true,
     onClickCitation: (String) -> Unit = {},
+    fxTags: List<FxTag> = emptyList(),
 ) {
     when {
         node.type == MarkdownTokenTypes.BLOCK_QUOTE -> {}
@@ -868,8 +883,13 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                     it
                 }.replace(BREAK_LINE_REGEX, "\n")
             }
-            append(
+            appendFxText(
                 text = text,
+                tags = fxTags,
+                accent = colorScheme.primary,
+                danger = colorScheme.error,
+                textColor = colorScheme.onSurface,
+                textDim = colorScheme.onSurface.copy(alpha = 0.55f),
             )
         }
 
@@ -884,7 +904,8 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                         density = density,
                         style = style,
                         enableLatexRendering = enableLatexRendering,
-                        onClickCitation = onClickCitation
+                        onClickCitation = onClickCitation,
+                        fxTags = fxTags,
                     )
                 }
             }
@@ -901,7 +922,8 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                         density = density,
                         style = style,
                         enableLatexRendering = enableLatexRendering,
-                        onClickCitation = onClickCitation
+                        onClickCitation = onClickCitation,
+                        fxTags = fxTags,
                     )
                 }
             }
@@ -918,7 +940,8 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                         density = density,
                         style = style,
                         enableLatexRendering = enableLatexRendering,
-                        onClickCitation = onClickCitation
+                        onClickCitation = onClickCitation,
+                        fxTags = fxTags,
                     )
                 }
             }
@@ -1052,7 +1075,8 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                     density = density,
                     style = style,
                     enableLatexRendering = enableLatexRendering,
-                    onClickCitation = onClickCitation
+                    onClickCitation = onClickCitation,
+                    fxTags = fxTags,
                 )
             }
         }

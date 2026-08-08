@@ -84,7 +84,10 @@ class SettingsStore(
         // UI设置
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val THEME_ID = stringPreferencesKey("theme_id")
+        val DARK_THEME_ID = stringPreferencesKey("dark_theme_id")
         val CUSTOM_THEMES = stringPreferencesKey("custom_themes")
+        val DAY_CUSTOM_COLORS = stringPreferencesKey("day_custom_colors")
+        val NIGHT_CUSTOM_COLORS = stringPreferencesKey("night_custom_colors")
         val DISPLAY_SETTING = stringPreferencesKey("display_setting")
         val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
 
@@ -238,6 +241,13 @@ class SettingsStore(
                 assistants = JsonInstant.decodeFromString(preferences[ASSISTANTS] ?: "[]"),
                 dynamicColor = preferences[DYNAMIC_COLOR] != false,
                 themeId = preferences[THEME_ID] ?: PresetThemes[0].id,
+                darkThemeId = preferences[DARK_THEME_ID]?.ifBlank { null },
+                dayCustomColors = preferences[DAY_CUSTOM_COLORS]?.let {
+                    JsonInstant.decodeFromString(it)
+                },
+                nightCustomColors = preferences[NIGHT_CUSTOM_COLORS]?.let {
+                    JsonInstant.decodeFromString(it)
+                },
                 customThemes = preferences[CUSTOM_THEMES]?.let {
                     JsonInstant.decodeFromString(it)
                 } ?: emptyList(),
@@ -425,6 +435,17 @@ class SettingsStore(
         dataStore.edit { preferences ->
             preferences[DYNAMIC_COLOR] = settings.dynamicColor
             preferences[THEME_ID] = settings.themeId
+            preferences[DARK_THEME_ID] = settings.darkThemeId ?: ""
+            if (settings.dayCustomColors != null) {
+                preferences[DAY_CUSTOM_COLORS] = JsonInstant.encodeToString(settings.dayCustomColors)
+            } else {
+                preferences.remove(DAY_CUSTOM_COLORS)
+            }
+            if (settings.nightCustomColors != null) {
+                preferences[NIGHT_CUSTOM_COLORS] = JsonInstant.encodeToString(settings.nightCustomColors)
+            } else {
+                preferences.remove(NIGHT_CUSTOM_COLORS)
+            }
             preferences[CUSTOM_THEMES] = JsonInstant.encodeToString(settings.customThemes)
             preferences[DEVELOPER_MODE] = settings.developerMode
             preferences[DISPLAY_SETTING] = JsonInstant.encodeToString(settings.displaySetting)
@@ -577,6 +598,9 @@ data class Settings(
     val disclaimerAcceptedAt: Int = 0,
     val dynamicColor: Boolean = true,
     val themeId: String = PresetThemes[0].id,
+    val darkThemeId: String? = null,
+    val dayCustomColors: CustomThemeColors? = null,
+    val nightCustomColors: CustomThemeColors? = null,
     val customThemes: List<CustomTheme> = emptyList(),
     val developerMode: Boolean = false,
     val displaySetting: DisplaySetting = DisplaySetting(),
@@ -655,7 +679,7 @@ data class DisplaySetting(
     val userNickname: String = "",
     val useAppIconStyleLoadingIndicator: Boolean = true,
     val showUserAvatar: Boolean = true,
-    val showAssistantBubble: Boolean = false,
+    val showAssistantBubble: Boolean = true,
     val showModelIcon: Boolean = true,
     val showModelName: Boolean = true,
     val showDateBelowName: Boolean = false,
@@ -685,6 +709,7 @@ data class DisplaySetting(
     val enableVolumeKeyScroll: Boolean = false,
     val volumeKeyScrollRatio: Float = 1.0f,
     val chatBubbleTransparency: Float = 0f,
+    val enableGlassBubbles: Boolean = true,
     val thinkingChainTransparency: Float = 0f,
     // 自定义字体
     val customFontPath: String = "",
@@ -718,7 +743,18 @@ data class DisplaySetting(
     val assistantBubbleImagePath: String = "",
     val bubbleCornerRadius: Float = 16f,
     val bubbleImageOverlayEnabled: Boolean = false, // 关=纯图片, 开=图片+主题色遮罩
+    // 发送音效路径
+    val sendSoundPath: String = "",
 )
+
+@Serializable
+data class CustomThemeColors(
+    val primaryColorArgb: Long? = null,
+    val secondaryColorArgb: Long? = null,
+    val tertiaryColorArgb: Long? = null,
+) {
+    fun hasAny(): Boolean = primaryColorArgb != null || secondaryColorArgb != null || tertiaryColorArgb != null
+}
 
 @Serializable
 data class WebDavConfig(
