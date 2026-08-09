@@ -698,6 +698,8 @@ data class DisplaySetting(
     val interfaceRealtimeRendering: Boolean = false,
     // 聊天气泡实时背景模糊（默认关闭，避免旧用户升级后自动增加每气泡 GPU 成本；固定 3 dp）
     val chatBubbleRealtimeBlur: Boolean = false,
+    // 液态玻璃气泡（iOS Liquid Glass 风格：模糊 + 边缘高光 + 顶部折射反光；独立开关）
+    val liquidGlassBubbles: Boolean = false,
     // 抽屉实时模糊强度（单位 dp，设置页 Slider 约束 3..20）
     val interfaceBlurRadius: Float = 8f,
     val interfaceSurfaceOpacity: Float = 82f,
