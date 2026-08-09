@@ -11,7 +11,7 @@ import me.rerere.hugeicons.stroke.AlertCircle
 import me.rerere.hugeicons.stroke.ArrowDown01
 import me.rerere.hugeicons.stroke.ArrowUp01
 import me.rerere.hugeicons.stroke.FileImport
-import me.rere.hugeicons.stroke.MessageBlocked
+import me.rerere.hugeicons.stroke.MessageBlocked
 import me.rerere.hugeicons.stroke.View
 import me.rerere.hugeicons.stroke.ViewOff
 import me.rerere.hugeicons.stroke.Add01
