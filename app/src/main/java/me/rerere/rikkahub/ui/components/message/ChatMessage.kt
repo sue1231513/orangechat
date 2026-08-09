@@ -845,6 +845,7 @@ private fun BubbleSurface(
     color: Color,
     overlayEnabled: Boolean,
     bubbleAlpha: Float,
+    liquidGlassBubbles: Boolean = false,
     onClick: (() -> Unit)? = null,
     // 本轮原型：用户与助手的普通文本气泡传 true（最终由 LiveBubbleBlurContext 与 final 条件决定）
     enableLiveBubbleBlur: Boolean = false,
@@ -852,9 +853,11 @@ private fun BubbleSurface(
 ) {
     val materialMode = LocalMaterialMode.current
     val liveContext = LocalLiveBubbleBlur.current
-    // FLAT = 磨砂（frosted），GLASS = 通透玻璃；两者都需要实时背景模糊
+    // FLAT + 液态玻璃开关 = iOS Liquid Glass 气泡
+    // GLASS = 透明玻璃气泡；两者都需要实时背景模糊
     val wantsLiveBlurMode =
-        materialMode == DisplayMaterialMode.GLASS || materialMode == DisplayMaterialMode.FLAT
+        materialMode == DisplayMaterialMode.GLASS ||
+            (materialMode == DisplayMaterialMode.FLAT && liquidGlassBubbles)
     val liveEnabled =
         enableLiveBubbleBlur &&
             liveContext.enabled &&
@@ -927,10 +930,10 @@ private fun BubbleSurface(
             drawRect(glassFillBrush)
         }
     }
-    // 磨砂（FLAT）填充：均匀半透明纯色，不做径向渐变，靠背景模糊出质感
-    val frostedFillModifier = Modifier.drawWithCache {
-        val frostedColor = color.copy(alpha = FROSTED_BUBBLE_FILL_ALPHA * bubbleAlpha)
-        onDrawBehind { drawRect(color = frostedColor) }
+    // 液态玻璃（FLAT + 开关）填充：均匀半透明底色，靠实时模糊 + 边缘高光出质感
+    val liquidGlassFillModifier = Modifier.drawWithCache {
+        val base = color.copy(alpha = LIQUID_GLASS_FILL_ALPHA * bubbleAlpha)
+        onDrawBehind { drawRect(color = base) }
     }
     val glassHighlightModifier = Modifier.drawWithCache {
         val topHighlightDepth = 6.dp.toPx()
