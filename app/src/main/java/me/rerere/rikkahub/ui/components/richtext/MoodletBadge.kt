@@ -1,5 +1,6 @@
 package me.rerere.rikkahub.ui.components.richtext
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -170,8 +171,12 @@ fun MoodletBadge(element: Element, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.35f),
+        border = BorderStroke(
+            width = 0.5.dp,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+        ),
     ) {
         Row(
             modifier = Modifier
@@ -203,10 +208,8 @@ fun MoodletBadge(element: Element, modifier: Modifier = Modifier) {
                     Text(
                         text = expandedText,
                         fontSize = 11.sp,
-                        fontStyle = if (reason.isNotEmpty()) FontStyle.Italic else FontStyle.Normal,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                            alpha = if (reason.isNotEmpty()) 0.6f else 0.75f
-                        ),
+                        fontStyle = FontStyle.Normal,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     )
                 }
             }
