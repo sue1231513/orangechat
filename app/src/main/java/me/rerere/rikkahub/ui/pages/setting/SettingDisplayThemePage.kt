@@ -190,6 +190,24 @@ fun SettingDisplayThemePage(vm: SettingVM = koinViewModel()) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(4.dp)),
+                            headlineContent = { Text("液态玻璃气泡") },
+                            supportingContent = { Text("iOS Liquid Glass 风格：实时模糊 + 边缘高光 + 顶部折射反光") },
+                            trailingContent = {
+                                Switch(
+                                    checked = displaySetting.liquidGlassBubbles,
+                                    onCheckedChange = {
+                                        updateDisplaySetting(
+                                            displaySetting.copy(liquidGlassBubbles = it)
+                                        )
+                                    },
+                                )
+                            },
+                            colors = CustomColors.listItemColors,
+                        )
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(4.dp)),
                             headlineContent = { Text("模糊强度") },
                             supportingContent = {
                                 Column {
