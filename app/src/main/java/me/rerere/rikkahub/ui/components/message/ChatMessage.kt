@@ -587,6 +587,7 @@ private fun MessagePartsBlock(
                                                         color = displaySettings.assistantBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                                                         overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                                         bubbleAlpha = bubbleAlpha,
+                                                        liquidGlassBubbles = displaySettings.liquidGlassBubbles,
                                                         enableLiveBubbleBlur = true,
                                                     ) {
                                                         MarkdownBlock(
@@ -621,6 +622,7 @@ private fun MessagePartsBlock(
                                             color = displaySettings.assistantBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                                             overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                             bubbleAlpha = bubbleAlpha,
+                                            liquidGlassBubbles = displaySettings.liquidGlassBubbles,
                                             enableLiveBubbleBlur = true,
                                         ) {
                                             MarkdownBlock(
