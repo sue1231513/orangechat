@@ -1069,10 +1069,10 @@ private fun BubbleSurface(
     }
     val shape = RoundedCornerShape(cornerRadius)
     val hasImage = imagePath.isNotBlank() && java.io.File(imagePath).exists()
-    val frostedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = FROSTED_BUBBLE_BORDER_ALPHA)
-    if (materialMode == DisplayMaterialMode.FLAT && finalLiveBubbleBlurEnabled && !hasImage) {
-        // ── 磨砂模式（iOS frosted）──
-        // 背景实时模糊 + 均匀半透明填充 + 极细边，不加玻璃高光/镜面反光
+    val frostedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = LIQUID_GLASS_BORDER_ALPHA)
+    if (materialMode == DisplayMaterialMode.FLAT && liquidGlassBubbles && !hasImage) {
+        // ── 液态玻璃模式（iOS Liquid Glass）──
+        // 实时背景模糊 + 均匀半透明填充 + 顶部折射反光 + 边缘高光描边
         Box(
             modifier = Modifier
                 .animateContentSize()
@@ -1080,12 +1080,15 @@ private fun BubbleSurface(
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
                 .border(1.dp, frostedBorderColor, shape)
         ) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .then(liveFragmentModifier)
-            )
-            if (isDarkTheme) {
+            if (finalLiveBubbleBlurEnabled) {
+                // 背景模糊片段：仅模糊背景层，文字保持清晰
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .then(liveFragmentModifier)
+                )
+            }
+            if (isDarkTheme && finalLiveBubbleBlurEnabled) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -1095,8 +1098,34 @@ private fun BubbleSurface(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .then(frostedFillModifier)
+                    .then(liquidGlassFillModifier)
             )
+            if (finalLiveBubbleBlurEnabled) {
+                // 径向光泽：左上亮，模拟玻璃对光的折射
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .then(liveBubbleRadialHighlightModifier)
+                )
+                // 顶部折射反光带
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .then(liveBubbleEdgeHighlightModifier)
+                )
+            } else {
+                // 无实时模糊时的降级：静态高光 + 顶部反光，保证液态玻璃观感
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .then(glassHighlightModifier)
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .then(liveBubbleEdgeHighlightModifier)
+                )
+            }
             Column(modifier = Modifier.padding(8.dp)) { content() }
         }
     } else if (materialMode == DisplayMaterialMode.GLASS) {
@@ -1209,8 +1238,8 @@ private fun BubbleSurface(
     }
 }
 
-private const val FROSTED_BUBBLE_FILL_ALPHA = 0.62f
-private const val FROSTED_BUBBLE_BORDER_ALPHA = 0.10f
+private const val LIQUID_GLASS_FILL_ALPHA = 0.58f
+private const val LIQUID_GLASS_BORDER_ALPHA = 0.12f
 private const val TRANSLUCENT_BUBBLE_BASE_ALPHA = 0.72f
 private const val TRANSLUCENT_BUBBLE_BORDER_ALPHA = 0.18f
 private const val GLASS_BUBBLE_BORDER_ALPHA = 0.24f
