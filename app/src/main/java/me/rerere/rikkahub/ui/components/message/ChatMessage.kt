@@ -532,6 +532,7 @@ private fun MessagePartsBlock(
                                                         color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
                                                         overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                                         bubbleAlpha = bubbleAlpha,
+                                                        liquidGlassBubbles = displaySettings.liquidGlassBubbles,
                                                         onClick = { onUserMessageClick?.invoke() },
                                                         enableLiveBubbleBlur = true,
                                                     ) {
@@ -554,6 +555,7 @@ private fun MessagePartsBlock(
                                             color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
                                             overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                             bubbleAlpha = bubbleAlpha,
+                                            liquidGlassBubbles = displaySettings.liquidGlassBubbles,
                                             onClick = { onUserMessageClick?.invoke() },
                                             enableLiveBubbleBlur = true,
                                         ) {
