@@ -6,6 +6,9 @@ on:
       - glass-fx-only
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,6 +17,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+          persist-credentials: true
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -86,8 +90,11 @@ jobs:
           JSON
 
       - name: Ensure debug keystore
+        id: keystore
         run: |
           if [ ! -f app/debug.keystore ]; then
+            echo "仓库内无共享 debug keystore，生成一次并提交回仓库，"
+            echo "之后所有 CI 构建复用同一签名，APK 可直接覆盖安装。"
             keytool -genkeypair -v \
               -keystore app/debug.keystore \
               -storepass android \
@@ -95,7 +102,24 @@ jobs:
               -keypass android \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname 'CN=Android Debug,O=Android,C=US'
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "复用仓库内共享 debug keystore"
+            echo "generated=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Commit shared debug keystore
+        if: steps.keystore.outputs.generated == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f app/debug.keystore
+          git commit -m "ci: 提交共享 debug keystore，固定 CI 包签名 [skip ci]
+
+避免每次 CI 现生成随机 keystore 导致新包与已装 APK 签名冲突
+（覆盖安装被拒）。debug keystore 密码为公开约定值 android，
+不含敏感信息；release 签名仍走 local.properties，不受影响。"
+          git push origin HEAD:${GITHUB_REF_NAME}
 
       - name: Build Debug APK
         run: |
