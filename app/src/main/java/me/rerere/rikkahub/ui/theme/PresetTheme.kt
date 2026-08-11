@@ -15,7 +15,7 @@ import me.rerere.rikkahub.ui.theme.presets.LiquidGlassThemePreset
 import me.rerere.rikkahub.ui.theme.presets.OceanThemePreset
 import me.rerere.rikkahub.ui.theme.presets.SakuraThemePreset
 import me.rerere.rikkahub.ui.theme.presets.SpringThemePreset
-import me.rerere.rikkahub.ui.theme.presets.custom.Harbor2ThemePreset
+import me.rerere.rikkahub.ui.theme.presets.custom.AmberDockThemePreset
 import me.rerere.rikkahub.ui.theme.presets.custom.HarborThemePreset
 import me.rerere.rikkahub.ui.theme.presets.custom.PearlTideThemePreset
 
@@ -36,7 +36,7 @@ val PresetThemes by lazy {
         OceanThemePreset,
         PearlTideThemePreset,
         HarborThemePreset,
-        Harbor2ThemePreset,
+        AmberDockThemePreset,
         SpringThemePreset,
         AutumnThemePreset,
         BlackThemePreset,

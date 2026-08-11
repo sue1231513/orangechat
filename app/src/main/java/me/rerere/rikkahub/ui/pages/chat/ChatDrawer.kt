@@ -221,9 +221,10 @@ fun ChatDrawerContent(
         drawerContainerColor = if (useLiveDrawerGlass) {
             // 实时玻璃：保留克制的最低半透明主题底色（不遮死 ChatPage 高斯模糊），
             // 确保即使模糊副本绘制失败，Drawer 也不会全透明
-            DrawerDefaults.modalContainerColor.copy(alpha = 0.15f * drawerSurfaceAlpha)
+            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.15f * drawerSurfaceAlpha)
         } else {
-            DrawerDefaults.modalContainerColor.copy(alpha = drawerSurfaceAlpha)
+            // 跟随当前主题的 surfaceContainer，让每套配色的侧边栏底色各自区分
+            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = drawerSurfaceAlpha)
         },
         drawerContentColor = MaterialTheme.colorScheme.onSurface,
     ) {

@@ -14,11 +14,11 @@ import androidx.compose.ui.res.stringResource
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.theme.PresetTheme
 
-val Harbor2ThemePreset by lazy {
+val AmberDockThemePreset by lazy {
     PresetTheme(
-        id = "harbor2",
+        id = "amberdock",
         name = {
-            Text(stringResource(id = R.string.theme_name_harbor2))
+            Text(stringResource(id = R.string.theme_name_amberdock))
         },
         standardLight = lightScheme,
         standardDark = darkScheme,
