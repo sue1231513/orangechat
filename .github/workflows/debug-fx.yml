@@ -114,11 +114,8 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f app/debug.keystore
-          git commit -m "ci: 提交共享 debug keystore，固定 CI 包签名 [skip ci]
-
-避免每次 CI 现生成随机 keystore 导致新包与已装 APK 签名冲突
-（覆盖安装被拒）。debug keystore 密码为公开约定值 android，
-不含敏感信息；release 签名仍走 local.properties，不受影响。"
+          git commit -m "ci: 提交共享 debug keystore，固定 CI 包签名 [skip ci]" \
+                     -m "避免每次 CI 现生成随机 keystore 导致新包与已装 APK 签名冲突（覆盖安装被拒）。debug keystore 密码为公开约定值 android，不含敏感信息；release 签名仍走 local.properties，不受影响。"
           git push origin HEAD:${GITHUB_REF_NAME}
 
       - name: Build Debug APK
