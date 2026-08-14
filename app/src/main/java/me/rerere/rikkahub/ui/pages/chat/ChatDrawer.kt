@@ -246,7 +246,7 @@ fun ChatDrawerContent(
                                 color = Color.White.copy(alpha = 0.5f),
                                 start = Offset(0f, 0f),
                                 end = Offset(size.width, 0f),
-                                strokeWidth = 1.dp.toPx()
+                                strokeWidth = 1f
                             )
                         }
                 )
