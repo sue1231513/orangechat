@@ -174,6 +174,7 @@ import me.rerere.rikkahub.ui.pages.voice.VoiceCallPage
 import me.rerere.rikkahub.service.VoiceCallService
 import me.rerere.rikkahub.ui.pages.webview.WebViewPage
 import me.rerere.rikkahub.ui.theme.GLASS_BACKGROUND_THEMES
+import me.rerere.rikkahub.ui.theme.THEME_BACKGROUND_SCRIM
 import me.rerere.rikkahub.ui.theme.LocalDarkMode
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
 import me.rerere.rikkahub.utils.CrashHandler
@@ -425,10 +426,23 @@ class RouteActivity : ComponentActivity() {
                         .background(MaterialTheme.colorScheme.background)
                         .let { base ->
                             if (settings.themeId in GLASS_BACKGROUND_THEMES) {
-                                base.paint(
+                                val scrim = THEME_BACKGROUND_SCRIM[settings.themeId]
+                                val painted = base.paint(
                                     painter = painterResource(id = R.drawable.pearltide_chat_bg),
                                     contentScale = ContentScale.Crop
                                 )
+                                if (scrim != null) {
+                                    painted.background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color(scrim.first.toLong()),
+                                                Color(scrim.second.toLong())
+                                            )
+                                        )
+                                    )
+                                } else {
+                                    painted
+                                }
                             } else {
                                 base
                             }

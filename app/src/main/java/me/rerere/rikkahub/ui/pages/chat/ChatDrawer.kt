@@ -219,16 +219,38 @@ fun ChatDrawerContent(
         modifier = drawerModifier,
         drawerShape = drawerShape,
         drawerContainerColor = if (useLiveDrawerGlass) {
-            // 实时玻璃：保留克制的最低半透明主题底色（不遮死 ChatPage 高斯模糊），
-            // 确保即使模糊副本绘制失败，Drawer 也不会全透明
-            MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.15f * drawerSurfaceAlpha)
+            Color.Transparent  // 毛玻璃轻量版：纱层和高光在 Box 里画
         } else {
-            // 跟随当前主题的 surfaceContainer，让每套配色的侧边栏底色各自区分
             MaterialTheme.colorScheme.surfaceContainer.copy(alpha = drawerSurfaceAlpha)
         },
         drawerContentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            // 毛玻璃轻量版：渐变纱 + 顶部高光（轻量，不截图不模糊）
+            if (useLiveDrawerGlass) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.12f),
+                                    Color.White.copy(alpha = 0.08f)
+                                )
+                            )
+                        )
+                        .drawWithContent {
+                            drawContent()
+                            // 顶部高光
+                            drawLine(
+                                color = Color.White.copy(alpha = 0.5f),
+                                start = Offset(0f, 0f),
+                                end = Offset(size.width, 0f),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                        }
+                )
+            }
             // 侧边栏背景图（最底层；实时模糊时跳过，避免遮挡 ChatPage 模糊层）
             val drawerBgPath = settings.displaySetting.drawerBackgroundPath
             if (drawerBgPath.isNotEmpty() && !useLiveDrawerGlass) {

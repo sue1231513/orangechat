@@ -1062,6 +1062,8 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="theme_name_black">中性黑</string>
   <string name="theme_name_ocean">海湾蓝</string>
   <string name="theme_name_pearltide">珍珠潮汐</string>
+  <string name="theme_name_nestrose">巢·玫瑰</string>
+  <string name="theme_name_nestcaramel">巢·焦糖</string>
   <string name="theme_name_sakura">樱花粉</string>
   <string name="theme_name_spring">原野绿</string>
   <string name="title_activity_safe_mode">安全模式</string>

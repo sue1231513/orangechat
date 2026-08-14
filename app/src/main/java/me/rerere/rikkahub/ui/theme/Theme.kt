@@ -49,7 +49,15 @@ fun popupContainerColor(baseContainerColor: Color): Color {
     return baseContainerColor.copy(alpha = popupAlpha)
 }
 
-internal val GLASS_BACKGROUND_THEMES = setOf("pearltide", "harbor", "harbor2")
+internal val GLASS_BACKGROUND_THEMES = setOf("pearltide", "harbor", "amberdock", "nestrose", "nestcaramel")
+
+internal val THEME_BACKGROUND_SCRIM = mapOf(
+    "pearltide"   to Pair(0x60F7FAFCu, 0x00F7FAFCu),
+    "harbor"      to Pair(0x60EAE6E4u, 0x00EAE6E4u),
+    "amberdock"   to Pair(0x60EBE3D7u, 0x00EBE3D7u),
+    "nestrose"    to Pair(0x60F6F1EBu, 0x00F6F1EBu),
+    "nestcaramel" to Pair(0x60F5EFE6u, 0x00F5EFE6u),
+)
 
 private val AMOLED_DARK_BACKGROUND = Color(0xFF000000)
 
