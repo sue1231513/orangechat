@@ -1,24 +1,29 @@
-﻿/*
- * 橘瓣 OrangeChat
- * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
- * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
- */
-
 package me.rerere.ai.provider.providers.openai
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.core.ReasoningLevel
+import me.rerere.ai.core.Tool
+import me.rerere.ai.provider.BuiltInTools
 import me.rerere.ai.provider.Model
 import me.rerere.ai.provider.ModelAbility
 import me.rerere.ai.provider.ProviderSetting
 import me.rerere.ai.provider.TextGenerationParams
+import me.rerere.ai.ui.OpenAIReasoningMetadata
+import me.rerere.ai.ui.ReasoningType
+import me.rerere.ai.ui.ServerToolMetadata
+import me.rerere.ai.ui.ServerToolProtocol
+import me.rerere.ai.ui.ServerToolStatus
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.ai.ui.toMetadata
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,7 +40,7 @@ import org.junit.Test
  * - function_call items for tool invocations
  * - function_call_output items for tool results
  */
-class ResponseAPIMessageTest {
+class ResponseApiRequestMessageTest {
 
     private lateinit var api: ResponseAPI
 
@@ -166,7 +171,7 @@ class ResponseAPIMessageTest {
     }
 
     @Test
-    fun `parallel tool calls should produce sequential function_call and output pairs`() {
+    fun `parallel tool calls should emit all calls before their outputs`() {
         // Multiple tools called together
         val assistantMessage = UIMessage(
             role = MessageRole.ASSISTANT,
@@ -197,27 +202,33 @@ class ResponseAPIMessageTest {
         assertEquals(3, functionCalls.size)
         assertEquals(3, functionOutputs.size)
 
-        // Verify each function_call is followed by its output (in pairs)
         val callIds = listOf("call_1", "call_2", "call_3")
-        for (callId in callIds) {
-            var callIndex = -1
-            var outputIndex = -1
-            for (i in result.indices) {
-                val item = result[i].jsonObject
-                if (item["type"]?.jsonPrimitive?.content == "function_call" &&
-                    item["call_id"]?.jsonPrimitive?.content == callId) {
-                    callIndex = i
-                }
-                if (item["type"]?.jsonPrimitive?.content == "function_call_output" &&
-                    item["call_id"]?.jsonPrimitive?.content == callId) {
-                    outputIndex = i
-                }
-            }
-            assertTrue("Should find function_call for $callId", callIndex >= 0)
-            assertTrue("Should find function_call_output for $callId", outputIndex >= 0)
-            assertEquals("Output should immediately follow call for $callId",
-                callIndex + 1, outputIndex)
+        assertEquals(
+            callIds,
+            functionCalls.map { it.jsonObject["call_id"]?.jsonPrimitive?.content },
+        )
+        assertEquals(
+            callIds,
+            functionOutputs.map { it.jsonObject["call_id"]?.jsonPrimitive?.content },
+        )
+
+        val toolItems = result.filter {
+            it.jsonObject["type"]?.jsonPrimitive?.content in setOf(
+                "function_call",
+                "function_call_output",
+            )
         }
+        assertEquals(
+            listOf(
+                "function_call",
+                "function_call",
+                "function_call",
+                "function_call_output",
+                "function_call_output",
+                "function_call_output",
+            ),
+            toolItems.map { it.jsonObject["type"]?.jsonPrimitive?.content },
+        )
     }
 
     @Test
@@ -316,6 +327,50 @@ class ResponseAPIMessageTest {
     }
 
     @Test
+    fun `encrypted reasoning should not replay plaintext content`() {
+        val reasoningItem = invokeBuildMessages(listOf(
+            UIMessage(
+                role = MessageRole.ASSISTANT,
+                parts = listOf(UIMessagePart.Reasoning(
+                    reasoning = "plaintext reasoning",
+                    metadata = OpenAIReasoningMetadata(
+                        reasoningId = "rs_1",
+                        encryptedContent = "encrypted",
+                    ).toMetadata(),
+                    reasoningType = ReasoningType.REASONING_TEXT,
+                )),
+            ),
+        )).single().jsonObject
+
+        assertEquals("reasoning", reasoningItem["type"]?.jsonPrimitive?.content)
+        assertEquals("rs_1", reasoningItem["id"]?.jsonPrimitive?.content)
+        assertEquals("encrypted", reasoningItem["encrypted_content"]?.jsonPrimitive?.content)
+        assertFalse(reasoningItem.containsKey("content"))
+    }
+
+    @Test
+    fun `unencrypted reasoning should replay plaintext content`() {
+        val reasoningItem = invokeBuildMessages(listOf(
+            UIMessage(
+                role = MessageRole.ASSISTANT,
+                parts = listOf(UIMessagePart.Reasoning(
+                    reasoning = "plaintext reasoning",
+                    metadata = OpenAIReasoningMetadata(reasoningId = "rs_1").toMetadata(),
+                    reasoningType = ReasoningType.REASONING_TEXT,
+                )),
+            ),
+        )).single().jsonObject
+
+        val content = reasoningItem["content"]?.jsonArray
+        assertEquals(1, content?.size)
+        assertEquals(
+            "plaintext reasoning",
+            content?.single()?.jsonObject?.get("text")?.jsonPrimitive?.content,
+        )
+        assertFalse(reasoningItem.containsKey("encrypted_content"))
+    }
+
+    @Test
     fun `volc response api should not include reasoning summary`() {
         val providerSetting = ProviderSetting.OpenAI(
             baseUrl = "https://ark.cn-beijing.volces.com/api/v3"
@@ -360,7 +415,130 @@ class ResponseAPIMessageTest {
         assertEquals("low", reasoning!!["effort"]?.jsonPrimitive?.content)
     }
 
+    @Test
+    fun `function tools and built-in tools should coexist in the same tools array`() {
+        val requestBody = invokeBuildRequestBody(
+            providerSetting = ProviderSetting.OpenAI(baseUrl = "https://api.openai.com/v1"),
+            params = createToolParams(
+                tools = listOf(createFunctionTool("get_weather")),
+                builtInTools = setOf(BuiltInTools.Search)
+            )
+        )
+
+        val tools = requestBody["tools"]?.jsonArray
+        assertTrue("tools should exist", tools != null)
+        val types = tools!!.map { it.jsonObject["type"]?.jsonPrimitive?.content }
+        assertTrue("function tool should not be dropped", types.contains("function"))
+        assertTrue("built-in web_search should be present", types.contains("web_search"))
+        assertEquals(2, tools.size)
+    }
+
+    @Test
+    fun `function tools should be sent when no built-in tools configured`() {
+        val requestBody = invokeBuildRequestBody(
+            providerSetting = ProviderSetting.OpenAI(baseUrl = "https://api.openai.com/v1"),
+            params = createToolParams(tools = listOf(createFunctionTool("get_weather")))
+        )
+
+        val tools = requestBody["tools"]?.jsonArray
+        assertEquals(1, tools?.size)
+        assertEquals("function", tools!![0].jsonObject["type"]?.jsonPrimitive?.content)
+        assertEquals("get_weather", tools[0].jsonObject["name"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `tools key should be absent when neither function nor built-in tools exist`() {
+        val requestBody = invokeBuildRequestBody(
+            providerSetting = ProviderSetting.OpenAI(baseUrl = "https://api.openai.com/v1"),
+            params = createToolParams()
+        )
+
+        assertFalse("tools key should not be written", requestBody.containsKey("tools"))
+    }
+
+    @Test
+    fun `server tool should replay the original response item`() {
+        val rawItem = buildJsonObject {
+            put("type", "web_search_call")
+            put("id", "ws_1")
+            put("status", "completed")
+            put("action", buildJsonObject { put("type", "search") })
+        }
+        val messages = listOf(
+            UIMessage.user("search"),
+            UIMessage(
+                role = MessageRole.ASSISTANT,
+                parts = listOf(UIMessagePart.ServerTool(
+                    toolCallId = "ws_1",
+                    toolName = "web_search",
+                    status = ServerToolStatus.COMPLETED,
+                    metadata = ServerToolMetadata(
+                        protocol = ServerToolProtocol.OPENAI_RESPONSES,
+                        call = rawItem,
+                    ).toMetadata(),
+                )),
+            ),
+        )
+
+        val item = invokeBuildMessages(messages).last().jsonObject
+        assertEquals(rawItem, item)
+    }
+
+    @Test
+    fun `server tool should not replay Claude blocks into Responses input`() {
+        val claudeCall = buildJsonObject {
+            put("type", "server_tool_use")
+            put("id", "srvtoolu_1")
+            put("name", "web_search")
+            put("input", buildJsonObject {})
+        }
+        val messages = listOf(
+            UIMessage.user("search"),
+            UIMessage(
+                role = MessageRole.ASSISTANT,
+                parts = listOf(UIMessagePart.ServerTool(
+                    toolCallId = "srvtoolu_1",
+                    toolName = "web_search",
+                    status = ServerToolStatus.COMPLETED,
+                    metadata = ServerToolMetadata(
+                        protocol = ServerToolProtocol.ANTHROPIC_MESSAGES,
+                        call = claudeCall,
+                    ).toMetadata(),
+                )),
+            ),
+        )
+
+        val items = invokeBuildMessages(messages)
+
+        assertEquals(1, items.size)
+        assertEquals("user", items.single().jsonObject["role"]?.jsonPrimitive?.content)
+    }
+
     // ==================== Helper Functions ====================
+
+    private fun createToolParams(
+        tools: List<Tool> = emptyList(),
+        builtInTools: Set<BuiltInTools> = emptySet()
+    ): TextGenerationParams {
+        return TextGenerationParams(
+            model = Model(
+                modelId = "test-model",
+                displayName = "test-model",
+                abilities = listOf(ModelAbility.TOOL),
+                tools = builtInTools
+            ),
+            tools = tools
+        )
+    }
+
+    private fun createFunctionTool(name: String): Tool {
+        return Tool(
+            name = name,
+            description = "test tool",
+            parameters = { InputSchema.Obj(properties = JsonObject(emptyMap())) },
+            execute = { emptyList() }
+        )
+    }
 
     private fun createExecutedTool(
         callId: String,
