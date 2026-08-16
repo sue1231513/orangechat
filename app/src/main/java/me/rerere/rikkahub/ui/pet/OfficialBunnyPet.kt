@@ -201,8 +201,12 @@ fun OfficialBunnyPet(
     val context = LocalContext.current
     val atlasBitmap = if (frame is BunnyFrame.Atlas) {
         remember(context.resources) {
-            BitmapFactory.decodeResource(context.resources, R.drawable.pet_bunny_state_atlas)
-                ?.asImageBitmap()
+            try {
+                BitmapFactory.decodeResource(context.resources, R.drawable.pet_bunny_state_atlas)
+                    ?.asImageBitmap()
+            } catch (_: Exception) {
+                null
+            }
         }
     } else {
         null
