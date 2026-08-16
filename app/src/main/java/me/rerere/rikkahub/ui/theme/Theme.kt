@@ -52,11 +52,18 @@ fun popupContainerColor(baseContainerColor: Color): Color {
 internal val GLASS_BACKGROUND_THEMES = setOf("pearltide", "harbor", "amberdock", "nestrose", "nestcaramel")
 
 internal val THEME_BACKGROUND_SCRIM = mapOf(
-    "pearltide"   to Pair(0x60F7FAFCu, 0x00F7FAFCu),
-    "harbor"      to Pair(0x60EAE6E4u, 0x00EAE6E4u),
-    "amberdock"   to Pair(0x60EBE3D7u, 0x00EBE3D7u),
-    "nestrose"    to Pair(0x60F6F1EBu, 0x00F6F1EBu),
-    "nestcaramel" to Pair(0x60F5EFE6u, 0x00F5EFE6u),
+    // Pair(topColor, bottomColor) — 顶部主题色浓覆盖, 底部反白托起输入框区域
+    "pearltide"   to ScrimColors(0x80C8D8E4u, 0x60F7FAFCu, 0x38C8D8E4u),
+    "harbor"      to ScrimColors(0x80A8B4C0u, 0x60F4F2EFu, 0x38A8B4C0u),
+    "amberdock"   to ScrimColors(0x80D3B891u, 0x60F7F4EFu, 0x38D3B891u),
+    "nestrose"    to ScrimColors(0x80D4A0A3u, 0x60F6F1EBu, 0x38D4A0A3u),
+    "nestcaramel" to ScrimColors(0x80B89B82u, 0x60F5EFE6u, 0x38B89B82u),
+)
+
+data class ScrimColors(
+    val top: UInt,        // 顶部主题色覆盖
+    val bottom: UInt,     // 底部底色反白
+    val accent: UInt,     // 强调色（用于中间过渡）
 )
 
 private val AMOLED_DARK_BACKGROUND = Color(0xFF000000)

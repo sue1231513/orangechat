@@ -20,12 +20,15 @@ import me.rerere.rikkahub.data.repository.ConversationRepository
 
 class SearchVM(
     private val conversationRepo: ConversationRepository,
+    private val settingsStore: me.rerere.rikkahub.data.datastore.SettingsStore,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
 
     var searchQuery by mutableStateOf("")
         private set
     var results by mutableStateOf<List<MessageSearchResult>>(emptyList())
+        private set
+    var cloudResults by mutableStateOf<List<CloudSearchResult>>(emptyList())
         private set
     var isLoading by mutableStateOf(false)
         private set
@@ -70,13 +73,50 @@ class SearchVM(
     private suspend fun performSearch(query: String) {
         if (query.isBlank()) {
             results = emptyList()
+            cloudResults = emptyList()
             return
         }
         isLoading = true
         try {
             results = conversationRepo.searchMessages(query)
+            // 同时搜 Supabase 云端
+            searchCloud(query)
         } finally {
             isLoading = false
         }
     }
+
+    private suspend fun searchCloud(query: String) {
+        try {
+            val settings = settingsStore.settingsFlow.value
+            val externalConfigs = settings.externalMemories.filter { it.enabled }
+            val allCloudResults = mutableListOf<CloudSearchResult>()
+            externalConfigs.forEach { config ->
+                val service = me.rerere.rikkahub.data.service.ExternalMemoryService(config)
+                val cloudMsgs = service.searchMessages(
+                    assistantId = settings.getCurrentAssistant().id.toString(),
+                    keyword = query,
+                    limit = 20,
+                ).getOrDefault(emptyList())
+                cloudMsgs.forEach { msg ->
+                    allCloudResults.add(CloudSearchResult(
+                        content = msg.content,
+                        role = msg.role,
+                        createdAt = msg.createdAt,
+                        source = config.name,
+                    ))
+                }
+            }
+            cloudResults = allCloudResults
+        } catch (e: Exception) {
+            cloudResults = emptyList()
+        }
+    }
 }
+
+data class CloudSearchResult(
+        val content: String,
+        val role: String,
+        val createdAt: String,
+        val source: String,
+)

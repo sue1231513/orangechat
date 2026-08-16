@@ -177,6 +177,7 @@ import me.rerere.rikkahub.service.VoiceCallService
 import me.rerere.rikkahub.ui.pages.webview.WebViewPage
 import me.rerere.rikkahub.ui.theme.GLASS_BACKGROUND_THEMES
 import me.rerere.rikkahub.ui.theme.THEME_BACKGROUND_SCRIM
+import me.rerere.rikkahub.ui.theme.ScrimColors
 import me.rerere.rikkahub.ui.theme.LocalDarkMode
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
 import me.rerere.rikkahub.utils.CrashHandler
@@ -437,8 +438,10 @@ class RouteActivity : ComponentActivity() {
                                     painted.background(
                                         Brush.verticalGradient(
                                             colors = listOf(
-                                                Color(scrim.first.toLong()),
-                                                Color(scrim.second.toLong())
+                                                Color(scrim.top.toLong()),
+                                                Color(scrim.accent.toLong()).copy(alpha = 0.15f),
+                                                Color(scrim.bottom.toLong()).copy(alpha = 0.08f),
+                                                Color(scrim.bottom.toLong())
                                             )
                                         )
                                     )

@@ -409,6 +409,34 @@ class GenerationHandler(
                     if (externalMemoryConfigs.isNotEmpty()) {
                         val lastUserMessage = messages.lastOrNull { it.role == MessageRole.USER }
                         val queryText = lastUserMessage?.toText()?.take(200)?.trim() ?: ""
+
+                        // 卡片读侧：查 memory_summaries 最近 N 条卡片注入上下文
+                        try {
+                            externalMemoryConfigs.forEach { config ->
+                                if (config.autoSaveDiarySummary) {
+                                    val summaryService = me.rerere.rikkahub.data.service.ExternalMemoryService(config)
+                                    val recentSummaries = summaryService.queryLatestSummaries(
+                                        assistantId = assistant.id.toString(),
+                                        limit = 5,
+                                    ).getOrDefault(emptyList())
+                                    if (recentSummaries.isNotEmpty()) {
+                                        appendLine()
+                                        appendLine("--- 近期记忆卡片 ---")
+                                        recentSummaries.forEach { summary ->
+                                            val cardText = summary.content.take(500).trim()
+                                            if (cardText.isNotBlank()) {
+                                                appendLine("[$summary.createdAt] $cardText")
+                                            }
+                                        }
+                                        appendLine("--- 记忆卡片结束 ---")
+                                        Log.d(TAG, "Injected ${recentSummaries.size} memory summaries into system prompt")
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to inject memory summaries", e)
+                        }
+
                         // 并发检索所有外置记忆库配置，每个配置最多 8 秒超时
                         val allRecalled = coroutineScope {
                             externalMemoryConfigs.map { config ->
@@ -418,8 +446,8 @@ class GenerationHandler(
                                             val service = me.rerere.rikkahub.data.service.ExternalMemoryService(config)
                                             val recalled = mutableListOf<String>()
 
-                            // 如果配置了向量模型且开启了日记摘要，使用向量召回日记摘要
-                            if (config.embeddingModelId != null && queryText.isNotBlank() && config.autoSaveDiarySummary) {
+                                            // 如果配置了向量模型且开启了日记摘要，使用向量召回日记摘要
+                                            if (config.embeddingModelId != null && queryText.isNotBlank() && config.autoSaveDiarySummary) {
                                                 val embeddingModel = settings.findModelById(config.embeddingModelId)
                                                 if (embeddingModel != null) {
                                                     val embeddingProvider = embeddingModel.findProvider(settings.providers)

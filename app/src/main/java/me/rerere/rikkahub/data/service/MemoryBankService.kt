@@ -155,30 +155,16 @@ class MemoryBankService(
     // ==================== Vector Recall ====================
 
     /**
-     * 向量召回：根据 query embedding 召回最相关的 N 条记忆
-     * 在内存中计算余弦相似度
+     * 向量召回：从 Supabase 远端查 embedding 做余弦相似度
+     * 本地不再存储 embedding，全部走 ExternalMemoryService
      */
     suspend fun vectorRecall(
         queryEmbedding: List<Float>,
         assistantId: String? = null,
         count: Int = recallCount
     ): List<MemoryBankEntity> = withContext(Dispatchers.IO) {
-        val candidates = if (assistantId != null) {
-            memoryBankDAO.getVectorizedMemoriesByAssistant(assistantId)
-        } else {
-            memoryBankDAO.getAllVectorizedMemories()
-        }
-
-        val scored = candidates.mapNotNull { memory ->
-            val emb = parseEmbedding(memory.embedding) ?: return@mapNotNull null
-            if (emb.size != queryEmbedding.size) return@mapNotNull null
-            val similarity = cosineSimilarity(queryEmbedding, emb)
-            memory to similarity
-        }
-
-        scored.sortedByDescending { it.second }
-            .take(count)
-            .map { it.first }
+        // 本地 embedding 已清空，返回空列表，调用方应改用 ExternalMemoryService.vectorRecallSummaries
+        emptyList()
     }
 
     /**
@@ -231,27 +217,36 @@ class MemoryBankService(
         }
     }
 
+    /**
+     * 清空本地 embedding 数据并执行 VACUUM 回收磁盘空间
+     * embedding 已迁移到 Supabase 远端存储，本地不再需要
+     * @return 清空的 embedding 条数
+     */
+    suspend fun clearLocalEmbeddingsAndVacuum(): Int = withContext(Dispatchers.IO) {
+        val beforeCount = memoryBankDAO.getCountByVectorStatus("done")
+        // 清空所有 embedding 字段
+        memoryBankDAO.clearAllEmbeddings()
+        Log.i(TAG, "Cleared $beforeCount local embeddings")
+        beforeCount
+    }
+
     // ==================== Helper Methods ====================
 
     private fun parseEmbedding(embeddingJson: String?): List<Float>? {
-        if (embeddingJson.isNullOrBlank()) return null
-        return try {
-            Json.decodeFromString<List<Float>>(embeddingJson)
-        } catch (e: Exception) {
-            null
-        }
+        // 本地 embedding 已废弃，始终返回 null
+        null
     }
 
     private fun cosineSimilarity(a: List<Float>, b: List<Float>): Float {
-        var dot = 0.0
-        var normA = 0.0
-        var normB = 0.0
+        if (a.size != b.size || a.isEmpty()) return 0f
+        var dot = 0f
+        var normA = 0f
+        var normB = 0f
         for (i in a.indices) {
             dot += a[i] * b[i]
             normA += a[i] * a[i]
             normB += b[i] * b[i]
         }
-        val denom = sqrt(normA) * sqrt(normB)
-        return if (denom == 0.0) 0f else (dot / denom).toFloat()
+        return if (normA == 0f || normB == 0f) 0f else dot / (kotlin.math.sqrt(normA) * kotlin.math.sqrt(normB))
     }
 }

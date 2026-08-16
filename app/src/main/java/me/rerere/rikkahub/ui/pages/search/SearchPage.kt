@@ -238,6 +238,24 @@ fun SearchPage(vm: SearchVM = koinViewModel()) {
                                     }
                                 )
                             }
+
+                            // 云端搜索结果
+                            if (vm.cloudResults.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        text = "云端记录",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                    )
+                                }
+                                items(vm.cloudResults) { result ->
+                                    CloudSearchResultItem(
+                                        result = result,
+                                        query = vm.searchQuery,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -319,6 +337,70 @@ private fun SearchResultItem(
                 )
                 Text(
                     text = formattedTime,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CloudSearchResultItem(
+    result: CloudSearchResult,
+    query: String,
+) {
+    val highlightColor = MaterialTheme.colorScheme.tertiaryContainer
+    val snippetText = buildAnnotatedString {
+        val text = result.content.take(300)
+        var index = 0
+        while (index < text.length) {
+            val matchIndex = text.indexOf(query, index, ignoreCase = true)
+            if (matchIndex == -1) {
+                append(text.substring(index))
+                break
+            }
+            if (matchIndex > index) {
+                append(text.substring(index, matchIndex))
+            }
+            withStyle(SpanStyle(background = highlightColor)) {
+                append(text.substring(matchIndex, matchIndex + query.length))
+            }
+            index = matchIndex + query.length
+        }
+    }
+
+    val materialMode = LocalMaterialMode.current
+    val surfaceOpacity = (LocalDisplaySettings.current.interfaceSurfaceOpacity / 100f).coerceIn(0f, 1f)
+    val shape = MaterialTheme.shapes.large
+    val backgroundColor = CustomColors.listItemColors.containerColor.copy(alpha = surfaceOpacity)
+
+    Box(modifier = Modifier.clip(shape)) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .searchContainerMaterial(materialMode, shape)
+        )
+        Surface(
+            color = backgroundColor,
+            shape = shape,
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = result.role.ifBlank { "unknown" },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = snippetText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "${result.source} · ${result.createdAt}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
