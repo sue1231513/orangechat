@@ -333,16 +333,15 @@ private fun ChatListNormal(
                 .hazeSource(state = hazeState)
                 .padding(top = innerPadding.calculateTopPadding())
                 .drawWithCache {
-                    val density = LocalDensity.current
                     val topFade = Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
                             Color.Black
                         ),
                         startY = 0f,
-                        endY = with(density) { 52.dp.toPx() }
+                        endY = 52.dp.toPx()
                     )
-                    val bottomFadeHeight = with(density) { (innerPadding.calculateBottomPadding() + 48.dp).toPx() }
+                    val bottomFadeHeight = (innerPadding.calculateBottomPadding() + 48.dp).toPx()
                     val bottomFade = Brush.verticalGradient(
                         colors = listOf(
                             Color.Black,

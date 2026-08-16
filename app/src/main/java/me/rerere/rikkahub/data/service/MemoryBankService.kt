@@ -234,7 +234,7 @@ class MemoryBankService(
 
     private fun parseEmbedding(embeddingJson: String?): List<Float>? {
         // 本地 embedding 已废弃，始终返回 null
-        null
+        return null
     }
 
     private fun cosineSimilarity(a: List<Float>, b: List<Float>): Float {
