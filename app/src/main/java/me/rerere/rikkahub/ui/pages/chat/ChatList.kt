@@ -333,13 +333,14 @@ private fun ChatListNormal(
                 .hazeSource(state = hazeState)
                 .padding(top = innerPadding.calculateTopPadding())
                 .drawWithCache {
+                    val topFadeHeight = 52.dp.toPx()
                     val topFade = Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
                             Color.Black
                         ),
                         startY = 0f,
-                        endY = 52.dp.toPx()
+                        endY = topFadeHeight
                     )
                     val bottomFadeHeight = (innerPadding.calculateBottomPadding() + 48.dp).toPx()
                     val bottomFade = Brush.verticalGradient(
@@ -347,13 +348,22 @@ private fun ChatListNormal(
                             Color.Black,
                             Color.Transparent
                         ),
-                        startY = size.height - bottomFadeHeight,
-                        endY = size.height
+                        startY = 0f,
+                        endY = bottomFadeHeight
                     )
                     onDrawWithContent {
                         drawContent()
-                        drawRect(brush = topFade)
-                        drawRect(brush = bottomFade)
+                        // 只在顶部区域画渐隐，不覆盖整个聊天区
+                        drawRect(
+                            brush = topFade,
+                            topLeft = androidx.compose.ui.geometry.Offset.Zero,
+                            size = androidx.compose.ui.geometry.Size(size.width, topFadeHeight)
+                        )
+                        drawRect(
+                            brush = bottomFade,
+                            topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - bottomFadeHeight),
+                            size = androidx.compose.ui.geometry.Size(size.width, bottomFadeHeight)
+                        )
                     }
                 },
         ) {
