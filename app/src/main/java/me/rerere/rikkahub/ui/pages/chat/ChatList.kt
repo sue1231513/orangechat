@@ -336,8 +336,8 @@ private fun ChatListNormal(
                     val topFadeHeight = 52.dp.toPx()
                     val topFade = Brush.verticalGradient(
                         colors = listOf(
-                            Color.Transparent,
-                            Color.Black
+                            Color.Black.copy(alpha = 0f),
+                            Color.Black.copy(alpha = 0f)
                         ),
                         startY = 0f,
                         endY = topFadeHeight
@@ -345,25 +345,14 @@ private fun ChatListNormal(
                     val bottomFadeHeight = (innerPadding.calculateBottomPadding() + 48.dp).toPx()
                     val bottomFade = Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black,
-                            Color.Transparent
+                            Color.Black.copy(alpha = 0f),
+                            Color.Black.copy(alpha = 0f)
                         ),
                         startY = 0f,
                         endY = bottomFadeHeight
                     )
                     onDrawWithContent {
                         drawContent()
-                        // 只在顶部区域画渐隐，不覆盖整个聊天区
-                        drawRect(
-                            brush = topFade,
-                            topLeft = androidx.compose.ui.geometry.Offset.Zero,
-                            size = androidx.compose.ui.geometry.Size(size.width, topFadeHeight)
-                        )
-                        drawRect(
-                            brush = bottomFade,
-                            topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - bottomFadeHeight),
-                            size = androidx.compose.ui.geometry.Size(size.width, bottomFadeHeight)
-                        )
                     }
                 },
         ) {
