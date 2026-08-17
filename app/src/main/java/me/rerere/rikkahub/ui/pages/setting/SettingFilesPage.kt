@@ -56,6 +56,8 @@ import me.rerere.rikkahub.data.db.entity.ManagedFileEntity
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.files.FileFolders
 import me.rerere.rikkahub.data.files.FilesManager
+import me.rerere.rikkahub.data.db.AppDatabase
+import me.rerere.rikkahub.data.service.MemoryBankService
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.theme.CustomColors
@@ -65,6 +67,8 @@ import java.io.File
 @Composable
 fun SettingFilesPage(
     filesManager: FilesManager = koinInject(),
+    appDatabase: AppDatabase = koinInject(),
+    memoryBankService: MemoryBankService = koinInject(),
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val gridState = rememberLazyStaggeredGridState()
@@ -79,6 +83,12 @@ fun SettingFilesPage(
     var selectedFolder by remember { mutableStateOf(FileFolders.UPLOAD) }
     var pendingDelete by remember { mutableStateOf<ManagedFileEntity?>(null) }
     val files by filesManager.observe(selectedFolder).collectAsState(initial = emptyList())
+
+    // 数据库清理
+    var showCleanupDialog by remember { mutableStateOf(false) }
+    var isCleaning by remember { mutableStateOf(false) }
+    var cleanupResult by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     if (pendingDelete != null) {
         val target = pendingDelete!!
@@ -105,6 +115,53 @@ fun SettingFilesPage(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.setting_files_page_cancel_action))
+                }
+            }
+        )
+    }
+
+    // 数据库清理对话框
+    if (showCleanupDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isCleaning) showCleanupDialog = false },
+            title = { Text("清理数据库") },
+            text = {
+                if (isCleaning) {
+                    Text("正在清理并压缩数据库，请稍候…")
+                } else {
+                    Text("将清空本地 Embedding 向量数据（已迁移至云端）并执行 VACUUM 压缩数据库以回收磁盘空间。\n\n此操作不可撤销，但不会影响对话记录和云端数据。")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            isCleaning = true
+                            try {
+                                // 1. 清空本地 embedding
+                                val cleared = memoryBankService.clearLocalEmbeddingsAndVacuum()
+                                // 2. VACUUM 回收磁盘空间
+                                appDatabase.openHelper.writableDatabase.execSQL("VACUUM")
+                                cleanupResult = "已清空 $cleared 条 Embedding，数据库已压缩"
+                            } catch (e: Exception) {
+                                cleanupResult = "清理失败: ${e.message}"
+                            }
+                            isCleaning = false
+                            showCleanupDialog = false
+                            cleanupResult?.let { toaster.show(it) }
+                        }
+                    },
+                    enabled = !isCleaning
+                ) {
+                    Text("清理")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showCleanupDialog = false },
+                    enabled = !isCleaning
+                ) {
                     Text(stringResource(R.string.setting_files_page_cancel_action))
                 }
             }
@@ -158,6 +215,29 @@ fun SettingFilesPage(
                             onDelete = { pendingDelete = file }
                         )
                     }
+                }
+            }
+
+            // 数据库清理入口
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = CustomColors.listItemColors.containerColor),
+                onClick = { showCleanupDialog = true }
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "数据库清理",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "清空本地 Embedding 向量并压缩数据库，回收磁盘空间",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
