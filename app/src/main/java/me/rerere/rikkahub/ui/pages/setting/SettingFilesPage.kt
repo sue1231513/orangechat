@@ -201,7 +201,7 @@ fun SettingFilesPage(
                 }
             } else {
                 LazyVerticalStaggeredGrid(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(16.dp),
                     verticalItemSpacing = 8.dp,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
