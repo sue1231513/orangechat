@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
@@ -37,8 +39,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -84,10 +88,13 @@ fun SettingFilesPage(
     var pendingDelete by remember { mutableStateOf<ManagedFileEntity?>(null) }
     val files by filesManager.observe(selectedFolder).collectAsState(initial = emptyList())
 
-    // 数据库清理
+        // 数据库清理
     var showCleanupDialog by remember { mutableStateOf(false) }
+    var showOldConversationsDialog by remember { mutableStateOf(false) }
     var isCleaning by remember { mutableStateOf(false) }
     var cleanupResult by remember { mutableStateOf<String?>(null) }
+    var daysToKeep by remember { mutableIntStateOf(90) }
+    var cleanableNodes by remember { mutableIntStateOf(-1) }  // -1 = 未加载
     val context = androidx.compose.ui.platform.LocalContext.current
 
     if (pendingDelete != null) {
@@ -115,6 +122,95 @@ fun SettingFilesPage(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.setting_files_page_cancel_action))
+                }
+            }
+        )
+    }
+
+    // 旧对话清理对话框
+    if (showOldConversationsDialog) {
+        // 打开时懒加载一次可清理数量
+        if (cleanableNodes == -1) {
+            LaunchedEffect(Unit) {
+                cleanableNodes = runCatching {
+                    val cutoff = System.currentTimeMillis() - daysToKeep.toLong() * 86_400_000L
+                    appDatabase.openHelper.writableDatabase.query(
+                        "SELECT COUNT(*) FROM message_node WHERE conversation_id IN (SELECT id FROM conversationentity WHERE update_at < $cutoff)"
+                    ).use { cur -> if (cur.moveToFirst()) cur.getInt(0) else 0 }
+                }.getOrDefault(0)
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { if (!isCleaning) { showOldConversationsDialog = false; cleanableNodes = -1 } },
+            title = { Text("清理旧对话") },
+            text = {
+                Column {
+                    Text("本地对话记录会越来越大。清理后旧对话只保留在云端（Supabase），需要时可通过搜索找回。")
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        listOf(30, 60, 90, 180).forEach { days ->
+                            FilterChip(
+                                selected = daysToKeep == days,
+                                onClick = {
+                                    daysToKeep = days
+                                    cleanableNodes = -1
+                                },
+                                label = { Text("$days天") }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = if (cleanableNodes >= 0) {
+                            "将清理 ${cleanableNodes} 条本地消息记录（保留最近 $daysToKeep 天）"
+                        } else {
+                            "计算可清理量…"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            isCleaning = true
+                            try {
+                                val cutoff = System.currentTimeMillis() - daysToKeep.toLong() * 86_400_000L
+                                val db = appDatabase.openHelper.writableDatabase
+                                db.query("DELETE FROM message_node WHERE conversation_id IN (SELECT id FROM conversationentity WHERE update_at < $cutoff)")
+                                    .use { it.moveToFirst() }
+                                db.query("DELETE FROM conversationentity WHERE update_at < $cutoff")
+                                    .use { it.moveToFirst() }
+                                // FTS 索引同步清理
+                                runCatching { db.query("DELETE FROM message_fts WHERE conversation_id NOT IN (SELECT id FROM conversationentity)").use { it.moveToFirst() } }
+                                try { db.query("PRAGMA wal_checkpoint(TRUNCATE)").use { it.moveToFirst() } } catch (_: Exception) {}
+                                try { db.query("VACUUM").use { it.moveToFirst() } } catch (_: Exception) {}
+                                cleanupResult = "已清理 $daysToKeep 天前的本地记录并压缩数据库"
+                                showOldConversationsDialog = false
+                                cleanableNodes = -1
+                                cleanupResult?.let { toaster.show(it) }
+                            } catch (e: Exception) {
+                                cleanupResult = "清理失败: ${e.message}"
+                                cleanupResult?.let { toaster.show(it) }
+                            }
+                            isCleaning = false
+                        }
+                    },
+                    enabled = !isCleaning && cleanableNodes != -1
+                ) {
+                    Text(if (isCleaning) "清理中…" else "清理")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { if (!isCleaning) { showOldConversationsDialog = false; cleanableNodes = -1 } }
+                ) {
                     Text(stringResource(R.string.setting_files_page_cancel_action))
                 }
             }
@@ -239,6 +335,33 @@ fun SettingFilesPage(
                     )
                     Text(
                         text = "清空本地 Embedding 向量并压缩数据库，回收磁盘空间",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // 旧对话清理入口
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = CustomColors.listItemColors.containerColor),
+                onClick = {
+                    daysToKeep = 90
+                    cleanableNodes = -1
+                    showOldConversationsDialog = true
+                }
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "清理旧对话",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "删除 N 天前的本地对话记录（云端保留），显著减小应用体积",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

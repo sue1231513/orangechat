@@ -334,15 +334,95 @@ class ExternalMemoryService(
 
     /**
      * 查询最新日记摘要
+     *
+     * assistantId 可能对不上云端数据（本地助手 UUID vs 云端存的助手名），
+     * 先按传入的 assistantId 过滤查询，查不到时回退为不带过滤查询最近 N 条，兜底保证能召回。
      */
     suspend fun queryLatestSummaries(
         assistantId: String,
         limit: Int = 5,
     ): Result<List<ExternalMemorySummary>> = withContext(Dispatchers.IO) {
         runCatching {
+            val filtered = querySummariesFiltered(assistantId, limit)
+            if (filtered.isNotEmpty()) {
+                return@runCatching filtered
+            }
+            // 兜底：不带 assistant_id 过滤
+            querySummariesUnfiltered(limit)
+        }
+    }
+
+    private fun querySummariesFiltered(
+        assistantId: String,
+        limit: Int,
+    ): List<ExternalMemorySummary> {
+        val url = config.supabaseUrl.trimEnd('/')
+        val query = "assistant_id=eq.${URLEncoder.encode(assistantId, "UTF-8")}&order=created_at.desc&limit=$limit"
+        val endpoint = URL("$url/rest/v1/${config.summariesTableName}?$query")
+
+        val connection = (endpoint.openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            setRequestProperty("apikey", config.supabaseKey)
+            setRequestProperty("Authorization", "Bearer ${config.supabaseKey}")
+            setRequestProperty("Accept", "application/json")
+            connectTimeout = 15000
+            readTimeout = 15000
+        }
+
+        val responseCode = connection.responseCode
+        if (responseCode !in 200..299) {
+            val errorBody = connection.errorStream?.bufferedReader()?.readText() ?: "Unknown error"
+            Log.e(TAG, "querySummariesFiltered HTTP $responseCode body=$errorBody")
+            throw Exception("Supabase API error ($responseCode): $errorBody")
+        }
+
+        val responseText = connection.inputStream.bufferedReader().readText()
+        return parseSummaries(responseText)
+    }
+
+    private fun querySummariesUnfiltered(
+        limit: Int,
+    ): List<ExternalMemorySummary> {
+        val url = config.supabaseUrl.trimEnd('/')
+        val query = "order=created_at.desc&limit=$limit"
+        val endpoint = URL("$url/rest/v1/${config.summariesTableName}?$query")
+
+        val connection = (endpoint.openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            setRequestProperty("apikey", config.supabaseKey)
+            setRequestProperty("Authorization", "Bearer ${config.supabaseKey}")
+            setRequestProperty("Accept", "application/json")
+            connectTimeout = 15000
+            readTimeout = 15000
+        }
+
+        val responseCode = connection.responseCode
+        if (responseCode !in 200..299) {
+            val errorBody = connection.errorStream?.bufferedReader()?.readText() ?: "Unknown error"
+            Log.e(TAG, "querySummariesUnfiltered HTTP $responseCode body=$errorBody")
+            throw Exception("Supabase API error ($responseCode): $errorBody")
+        }
+
+        val responseText = connection.inputStream.bufferedReader().readText()
+        return parseSummaries(responseText)
+    }
+
+    /**
+     * 关键词搜索消息（双路：先带 assistant_id，搜不到再全局搜）
+     */
+    suspend fun searchMessagesAnyAssistant(
+        keyword: String,
+        assistantId: String?,
+        limit: Int = 10,
+    ): Result<List<ExternalMemoryMessage>> = withContext(Dispatchers.IO) {
+        runCatching {
             val url = config.supabaseUrl.trimEnd('/')
-            val query = "assistant_id=eq.${URLEncoder.encode(assistantId, "UTF-8")}&order=created_at.desc&limit=$limit"
-            val endpoint = URL("$url/rest/v1/${config.summariesTableName}?$query")
+            val encodedKeyword = URLEncoder.encode("%$keyword%", "UTF-8")
+            val idFilter = if (assistantId != null) {
+                "assistant_id=eq.${URLEncoder.encode(assistantId, "UTF-8")}&"
+            } else ""
+            val query = "${idFilter}content=ilike.$encodedKeyword&order=created_at.desc&limit=$limit"
+            val endpoint = URL("$url/rest/v1/${config.tableName}?$query")
 
             val connection = (endpoint.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
@@ -356,12 +436,12 @@ class ExternalMemoryService(
             val responseCode = connection.responseCode
             if (responseCode !in 200..299) {
                 val errorBody = connection.errorStream?.bufferedReader()?.readText() ?: "Unknown error"
-                Log.e(TAG, "queryLatestSummaries HTTP $responseCode body=$errorBody")
+                Log.e(TAG, "searchMessagesAnyAssistant HTTP $responseCode body=$errorBody")
                 throw Exception("Supabase API error ($responseCode): $errorBody")
             }
 
             val responseText = connection.inputStream.bufferedReader().readText()
-            parseSummaries(responseText)
+            parseMessages(responseText)
         }
     }
 

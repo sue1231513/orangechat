@@ -91,14 +91,24 @@ class SearchVM(
         try {
             val settings = settingsStore.settingsFlow.value
             val externalConfigs = settings.externalMemories.filter { it.enabled }
+            val currentAssistant = settings.getCurrentAssistant()
             val allCloudResults = mutableListOf<CloudSearchResult>()
             externalConfigs.forEach { config ->
                 val service = me.rerere.rikkahub.data.service.ExternalMemoryService(config)
-                val cloudMsgs = service.searchMessages(
-                    assistantId = settings.getCurrentAssistant().id.toString(),
+                // 先按当前助手 UUID 搜
+                var cloudMsgs = service.searchMessages(
+                    assistantId = currentAssistant.id.toString(),
                     keyword = query,
                     limit = 20,
                 ).getOrDefault(emptyList())
+                // UUID 匹配不上时（云端存的是助手名），做一次全局搜索兜底
+                if (cloudMsgs.isEmpty()) {
+                    cloudMsgs = service.searchMessagesAnyAssistant(
+                        keyword = query,
+                        assistantId = null,
+                        limit = 20,
+                    ).getOrDefault(emptyList())
+                }
                 cloudMsgs.forEach { msg ->
                     allCloudResults.add(CloudSearchResult(
                         content = msg.content,

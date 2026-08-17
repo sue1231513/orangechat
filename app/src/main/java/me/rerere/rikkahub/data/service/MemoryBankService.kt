@@ -21,6 +21,7 @@ import java.util.Locale
 import kotlin.math.sqrt
 
 private const val TAG = "MemoryBankService"
+private const val ONE_DAY_MS = 86_400_000L
 
 class MemoryBankService(
     private val memoryBankDAO: MemoryBankDAO,
@@ -168,57 +169,54 @@ class MemoryBankService(
     }
 
     /**
-     * 保存自动总结到记忆库
-     */
-    suspend fun saveAutoSummary(
-        content: String,
-        assistantId: String?,
-        conversationId: String? = null
-    ): MemoryBankEntity? = withContext(Dispatchers.IO) {
-        try {
-            val entity = MemoryBankEntity(
-                content = content,
-                type = "auto_summary",
-                assistantId = assistantId,
-                conversationId = conversationId,
-                vectorStatus = "skipped"
-            )
-            val id = memoryBankDAO.insertMemory(entity).toInt()
-            entity.copy(id = id)
-        } catch (e: Exception) {
-            Log.e(TAG, "saveAutoSummary failed", e)
-            null
+         * 清空本地 embedding 数据并执行 VACUUM 回收磁盘空间
+         * embedding 已迁移到 Supabase 远端存储，本地不再需要
+         * @return 清空的 embedding 条数
+         */
+        suspend fun clearLocalEmbeddingsAndVacuum(): Int = withContext(Dispatchers.IO) {
+            // 统计所有有 embedding 的记录（不管 vector_status 是什么）
+            val beforeCount = memoryBankDAO.getCountByVectorStatus("done") +
+                memoryBankDAO.getCountByVectorStatus("pending") +
+                memoryBankDAO.getCountByVectorStatus("failed") +
+                memoryBankDAO.getCountByVectorStatus("skipped")
+            // 清空所有 embedding 字段
+            memoryBankDAO.clearAllEmbeddings()
+            // 把所有 vector_status 标记为 skipped（不再尝试向量化）
+            memoryBankDAO.markAllVectorStatusSkipped()
+            Log.i(TAG, "Cleared $beforeCount local embeddings (all statuses)")
+            beforeCount
         }
+        // 重新统计
+        val nodesRemaining = appDatabase.openHelper.writableDatabase.let {
+            it.query("SELECT COUNT(*) FROM message_node").use { cur ->
+                cur.moveToFirst()
+                cur.getInt(0)
+            }
+        }
+        val convRemaining = appDatabase.openHelper.writableDatabase.let {
+            it.query("SELECT COUNT(*) FROM conversationentity").use { cur ->
+                cur.moveToFirst()
+                cur.getInt(0)
+            }
+        }
+        Log.i(TAG, "Cleaned old conversations (kept $daysToKeep days): nodes=$nodesRemaining, conversations=$convRemaining")
+        Pair(convRemaining, nodesRemaining)
     }
 
     /**
-     * 保存单条聊天记录到记忆库
+     * 统计可清理的节点数（N 天前的对话有多少节点）
      */
-    suspend fun saveChatMessage(
-        content: String,
-        role: String,
-        assistantId: String?,
-        conversationId: String? = null
-    ): MemoryBankEntity? = withContext(Dispatchers.IO) {
-        try {
-            val entity = MemoryBankEntity(
-                content = content,
-                type = "message",
-                role = role,
-                assistantId = assistantId,
-                conversationId = conversationId,
-                vectorStatus = "skipped"
-            )
-            val id = memoryBankDAO.insertMemory(entity).toInt()
-            entity.copy(id = id)
-        } catch (e: Exception) {
-            Log.e(TAG, "saveChatMessage failed", e)
-            null
+    suspend fun countCleanableNodes(daysToKeep: Int): Int = withContext(Dispatchers.IO) {
+        val cutoff = System.currentTimeMillis() - daysToKeep.toLong() * ONE_DAY_MS
+        appDatabase.openHelper.writableDatabase.let {
+            it.query(
+                "SELECT COUNT(*) FROM message_node WHERE conversation_id IN (SELECT id FROM conversationentity WHERE update_at < $cutoff)"
+            ).use { cur ->
+                cur.moveToFirst()
+                cur.getInt(0)
+            }
         }
     }
-
-    /**
-     * 清空本地 embedding 数据并执行 VACUUM 回收磁盘空间
      * embedding 已迁移到 Supabase 远端存储，本地不再需要
      * @return 清空的 embedding 条数
      */
