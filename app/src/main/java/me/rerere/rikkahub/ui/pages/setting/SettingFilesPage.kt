@@ -141,9 +141,12 @@ fun SettingFilesPage(
                             try {
                                 // 1. 清空本地 embedding
                                 val cleared = memoryBankService.clearLocalEmbeddingsAndVacuum()
-                                // 2. 先 checkpoint WAL 再 VACUUM 回收磁盘空间
-                                appDatabase.openHelper.writableDatabase.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
-                                appDatabase.openHelper.writableDatabase.execSQL("VACUUM")
+                                // 2. WAL checkpoint + VACUUM
+                                // RequerySQLiteOpenHelper 不支持 execSQL(PRAGMA/VACUUM)，
+                                // 必须用 rawQuery 执行（VACUUM 虽然不返回行，但 rawQuery 可以执行无结果集的语句）
+                                val db = appDatabase.openHelper.writableDatabase
+                                try { db.query("PRAGMA wal_checkpoint(TRUNCATE)").use { it.moveToFirst() } } catch (_: Exception) {}
+                                try { db.query("VACUUM").use { it.moveToFirst() } } catch (_: Exception) {}
                                 cleanupResult = "已清空 $cleared 条 Embedding，数据库已压缩"
                             } catch (e: Exception) {
                                 cleanupResult = "清理失败: ${e.message}"
