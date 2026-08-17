@@ -223,10 +223,16 @@ class MemoryBankService(
      * @return 清空的 embedding 条数
      */
     suspend fun clearLocalEmbeddingsAndVacuum(): Int = withContext(Dispatchers.IO) {
-        val beforeCount = memoryBankDAO.getCountByVectorStatus("done")
+        // 统计所有有 embedding 的记录（不管 vector_status 是什么）
+        val beforeCount = memoryBankDAO.getCountByVectorStatus("done") +
+            memoryBankDAO.getCountByVectorStatus("pending") +
+            memoryBankDAO.getCountByVectorStatus("failed") +
+            memoryBankDAO.getCountByVectorStatus("skipped")
         // 清空所有 embedding 字段
         memoryBankDAO.clearAllEmbeddings()
-        Log.i(TAG, "Cleared $beforeCount local embeddings")
+        // 把所有 vector_status 标记为 skipped（不再尝试向量化）
+        memoryBankDAO.markAllVectorStatusSkipped()
+        Log.i(TAG, "Cleared $beforeCount local embeddings (all statuses)")
         beforeCount
     }
 

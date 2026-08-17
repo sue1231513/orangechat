@@ -141,7 +141,8 @@ fun SettingFilesPage(
                             try {
                                 // 1. 清空本地 embedding
                                 val cleared = memoryBankService.clearLocalEmbeddingsAndVacuum()
-                                // 2. VACUUM 回收磁盘空间
+                                // 2. 先 checkpoint WAL 再 VACUUM 回收磁盘空间
+                                appDatabase.openHelper.writableDatabase.execSQL("PRAGMA wal_checkpoint(TRUNCATE)")
                                 appDatabase.openHelper.writableDatabase.execSQL("VACUUM")
                                 cleanupResult = "已清空 $cleared 条 Embedding，数据库已压缩"
                             } catch (e: Exception) {
