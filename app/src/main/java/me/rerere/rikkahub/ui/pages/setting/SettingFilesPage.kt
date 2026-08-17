@@ -159,7 +159,7 @@ fun SettingFilesPage(
                                     daysToKeep = days
                                     cleanableNodes = -1
                                 },
-                                label = { Text("$days天") }
+                                label = { Text("${days}天") }
                             )
                         }
                     }
