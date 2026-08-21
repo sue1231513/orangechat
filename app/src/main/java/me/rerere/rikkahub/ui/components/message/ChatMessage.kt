@@ -64,19 +64,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
@@ -563,7 +565,7 @@ private fun MessagePartsBlock(
                                         BubbleSurface(
                                             imagePath = displaySettings.userBubbleImagePath,
                                             cornerRadius = displaySettings.bubbleCornerRadius.dp,
-                                                        telegramShape = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
+                                            telegramShape = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                             color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
                                             overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                             bubbleAlpha = bubbleAlpha,
@@ -636,7 +638,7 @@ private fun MessagePartsBlock(
                                         BubbleSurface(
                                             imagePath = displaySettings.assistantBubbleImagePath,
                                             cornerRadius = displaySettings.bubbleCornerRadius.dp,
-                                                        telegramShape = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
+                                            telegramShape = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                             color = displaySettings.assistantBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                                             overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                             bubbleAlpha = bubbleAlpha,
@@ -1062,11 +1064,14 @@ private fun BubbleSurface(
             drawRect(brush = readabilityBrush)
         }
     }
-    // 实时模糊气泡专用：沿真实圆角轮廓贴边的方向性硬高光（左上亮、向右下透明；昼夜强弱不同）
+    // 气泡实际轮廓：Telegram 布局下四角不等（尾巴那一角只有 5dp），
+    // 玻璃/液态玻璃的贴边高光必须照它走，否则会在尖角处错位并被父级 clip 切掉一截。
+    val shape = telegramShape ?: RoundedCornerShape(cornerRadius)
+    val bubbleLayoutDirection = LocalLayoutDirection.current
+    // 实时模糊气泡专用：沿真实轮廓贴边的方向性硬高光（左上亮、向右下透明；昼夜强弱不同）
     val liveBubbleEdgeHighlightModifier = Modifier.drawWithCache {
         val strokeWidthPx = 1.dp.toPx()
         val halfStroke = strokeWidthPx / 2f
-        val adjustedRadius = maxOf(0f, cornerRadius.toPx() - halfStroke)
         val edgeStartAlpha = if (isDarkTheme) 0.38f else 0.78f
         val edgeMidAlpha = if (isDarkTheme) 0.133f else 0.273f
         val edgeBrush = Brush.linearGradient(
@@ -1079,22 +1084,35 @@ private fun BubbleSurface(
             start = Offset.Zero,
             end = Offset(size.width, size.height),
         )
+        // 描边居中落在轮廓上：按内缩一个描边宽的尺寸取轮廓，再整体平移半个描边宽
+        val insetSize = Size(
+            width = maxOf(0f, size.width - strokeWidthPx),
+            height = maxOf(0f, size.height - strokeWidthPx),
+        )
+        val edgePath = if (insetSize.width > 0f && insetSize.height > 0f) {
+            Path().apply {
+                addOutline(
+                    shape.createOutline(
+                        size = insetSize,
+                        layoutDirection = bubbleLayoutDirection,
+                        density = this@drawWithCache,
+                    )
+                )
+                translate(Offset(halfStroke, halfStroke))
+            }
+        } else {
+            null
+        }
         onDrawBehind {
-            if (size.width > 0f && size.height > 0f) {
-                drawRoundRect(
+            if (edgePath != null) {
+                drawPath(
+                    path = edgePath,
                     brush = edgeBrush,
-                    topLeft = Offset(halfStroke, halfStroke),
-                    size = Size(
-                        width = size.width - strokeWidthPx,
-                        height = size.height - strokeWidthPx,
-                    ),
-                    cornerRadius = CornerRadius(adjustedRadius, adjustedRadius),
                     style = Stroke(width = strokeWidthPx),
                 )
             }
         }
     }
-    val shape = telegramShape ?: RoundedCornerShape(cornerRadius)
     val hasImage = imagePath.isNotBlank() && java.io.File(imagePath).exists()
     val frostedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = LIQUID_GLASS_BORDER_ALPHA)
     if (materialMode == DisplayMaterialMode.FLAT && liquidGlassBubbles && !hasImage) {
