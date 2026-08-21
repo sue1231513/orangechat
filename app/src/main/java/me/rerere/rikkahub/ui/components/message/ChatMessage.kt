@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -1579,13 +1580,17 @@ internal fun VoiceMessageBubble(
 }
 
 @Composable
-private fun TelegramMeta(time: String?, checks: Boolean) {
+private fun ColumnScope.TelegramMeta(time: String?, checks: Boolean) {
     if (time == null) return
+    // 不加 fillMaxWidth：一行时间会把整个气泡撑满聊天列，短消息也被拉成整行宽。
+    // 靠 align(Alignment.End) 贴右下，跟 Telegram 一致。
     Text(
         text = if (checks) "$time  ✓✓" else time,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-        modifier = Modifier.padding(top = 2.dp),
+        modifier = Modifier
+            .align(Alignment.End)
+            .padding(top = 2.dp),
     )
 }
 
