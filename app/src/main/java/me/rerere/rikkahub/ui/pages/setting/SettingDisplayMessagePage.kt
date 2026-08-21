@@ -45,10 +45,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.io.File
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.ChatFontFamily
+import me.rerere.rikkahub.data.datastore.ChatBubbleStyle
 import me.rerere.rikkahub.data.datastore.DisplaySetting
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.richtext.MarkdownBlock
 import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
@@ -130,6 +132,27 @@ fun SettingDisplayMessagePage(vm: SettingVM = koinViewModel()) {
                                 }
                             )
                         },
+                    )
+                    item(
+                        headlineContent = { Text("消息气泡样式") },
+                        supportingContent = {
+                            Select(
+                                options = ChatBubbleStyle.entries,
+                                selectedOption = displaySetting.chatBubbleStyle,
+                                onOptionSelected = { style ->
+                                    updateDisplaySetting(displaySetting.copy(chatBubbleStyle = style))
+                                },
+                                modifier = Modifier
+                                    .padding(top = 4.dp)
+                                    .fillMaxWidth(),
+                                optionToString = { style ->
+                                    when (style) {
+                                        ChatBubbleStyle.RIKKA -> "Rikka 原生"
+                                        ChatBubbleStyle.TELEGRAM -> "Telegram（时间与双勾）"
+                                    }
+                                }
+                            )
+                        }
                     )
                     item(
                         headlineContent = { Text(stringResource(R.string.setting_display_page_chat_list_model_icon_title)) },

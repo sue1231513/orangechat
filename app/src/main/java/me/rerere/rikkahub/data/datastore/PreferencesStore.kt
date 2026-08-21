@@ -662,12 +662,20 @@ enum class DisplayMaterialMode {
 }
 
 @Serializable
+enum class ChatBubbleStyle {
+    RIKKA,
+    TELEGRAM,
+}
+
+@Serializable
 data class DisplaySetting(
     val userAvatar: Avatar = Avatar.Dummy,
     val userNickname: String = "",
     val useAppIconStyleLoadingIndicator: Boolean = true,
     val showUserAvatar: Boolean = true,
     val showAssistantBubble: Boolean = false,
+    /** 关闭时保持原生 Rikka；开启后使用 Telegram 式双侧消息气泡。 */
+    val chatBubbleStyle: ChatBubbleStyle = ChatBubbleStyle.RIKKA,
     val showModelIcon: Boolean = true,
     val showModelName: Boolean = true,
     val showDateBelowName: Boolean = false,

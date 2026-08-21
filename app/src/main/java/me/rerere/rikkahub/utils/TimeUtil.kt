@@ -44,6 +44,15 @@ fun Instant.toLocalTime(): String {
         .format(localDateTime)
 }
 
+fun LocalDateTime.toMessageTimeString(): String {
+    val locale = Locale.getDefault()
+    return if (toLocalDate() == LocalDate.now()) {
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale).format(this)
+    } else {
+        toLocalString()
+    }
+}
+
 fun LocalDateTime.toLocalString(): String {
     val locale = Locale.getDefault()
     val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(locale)

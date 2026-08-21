@@ -96,6 +96,7 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toFile
 import androidx.core.net.toUri
 import kotlinx.coroutines.FlowPreview
+import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.coroutines.flow.debounce
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -132,6 +133,7 @@ import me.rerere.rikkahub.ui.theme.LocalDarkMode
 import me.rerere.rikkahub.ui.theme.LocalMaterialMode
 import me.rerere.rikkahub.ui.theme.extendColors
 import me.rerere.rikkahub.data.datastore.ChatFontFamily
+import me.rerere.rikkahub.data.datastore.ChatBubbleStyle
 import me.rerere.rikkahub.data.datastore.DisplayMaterialMode
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.layout.ContentScale
@@ -139,6 +141,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.foundation.Image
 import me.rerere.rikkahub.utils.JsonInstant
+import me.rerere.rikkahub.utils.toMessageTimeString
 import me.rerere.rikkahub.utils.base64Encode
 import me.rerere.rikkahub.utils.openUrl
 import coil3.compose.AsyncImage
@@ -319,6 +322,8 @@ fun ChatMessage(
             MessagePartsBlock(
                 assistant = assistant,
                 role = message.role,
+                telegramStyle = settings.chatBubbleStyle == ChatBubbleStyle.TELEGRAM,
+                messageTime = message.createdAt.toJavaLocalDateTime().toMessageTimeString(),
                 parts = message.parts,
                 annotations = message.annotations,
                 loading = loading,
@@ -416,6 +421,8 @@ fun ChatMessage(
 private fun MessagePartsBlock(
     assistant: Assistant?,
     role: MessageRole,
+    telegramStyle: Boolean,
+    messageTime: String,
     model: Model?,
     parts: List<UIMessagePart>,
     annotations: List<UIMessageAnnotation>,
@@ -528,11 +535,13 @@ private fun MessagePartsBlock(
                                                 key(segIndex) {
                                                     BubbleSurface(
                                                         imagePath = displaySettings.userBubbleImagePath,
-                                                        cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                                        cornerRadius = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                                         color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
                                                         overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                                         bubbleAlpha = bubbleAlpha,
                                                         liquidGlassBubbles = displaySettings.liquidGlassBubbles,
+                                                        telegramTime = if (telegramStyle) messageTime else null,
+                                                        telegramChecks = telegramStyle && role == MessageRole.USER,
                                                         onClick = { onUserMessageClick?.invoke() },
                                                         enableLiveBubbleBlur = true,
                                                     ) {
@@ -551,11 +560,13 @@ private fun MessagePartsBlock(
                                     } else {
                                         BubbleSurface(
                                             imagePath = displaySettings.userBubbleImagePath,
-                                            cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                            cornerRadius = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                             color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
                                             overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                             bubbleAlpha = bubbleAlpha,
                                             liquidGlassBubbles = displaySettings.liquidGlassBubbles,
+                                            telegramTime = if (telegramStyle) messageTime else null,
+                                            telegramChecks = telegramStyle && role == MessageRole.USER,
                                             onClick = { onUserMessageClick?.invoke() },
                                             enableLiveBubbleBlur = true,
                                         ) {
@@ -580,14 +591,16 @@ private fun MessagePartsBlock(
                                     ) {
                                         bubbleSegments.fastForEachIndexed { segIndex, segment ->
                                             key(segIndex) {
-                                                if (displaySettings.showAssistantBubble) {
+                                                if (displaySettings.showAssistantBubble || telegramStyle) {
                                                     BubbleSurface(
                                                         imagePath = displaySettings.assistantBubbleImagePath,
-                                                        cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                                        cornerRadius = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                                         color = displaySettings.assistantBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                                                         overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                                         bubbleAlpha = bubbleAlpha,
                                                         liquidGlassBubbles = displaySettings.liquidGlassBubbles,
+                                                        telegramTime = if (telegramStyle) messageTime else null,
+                                                        telegramChecks = telegramStyle && role == MessageRole.USER,
                                                         enableLiveBubbleBlur = true,
                                                     ) {
                                                         MarkdownBlock(
@@ -615,14 +628,16 @@ private fun MessagePartsBlock(
                                         }
                                     }
                                 } else {
-                                    if (displaySettings.showAssistantBubble) {
+                                    if (displaySettings.showAssistantBubble || telegramStyle) {
                                         BubbleSurface(
                                             imagePath = displaySettings.assistantBubbleImagePath,
-                                            cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                            cornerRadius = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                             color = displaySettings.assistantBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                                             overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                             bubbleAlpha = bubbleAlpha,
                                             liquidGlassBubbles = displaySettings.liquidGlassBubbles,
+                                            telegramTime = if (telegramStyle) messageTime else null,
+                                            telegramChecks = telegramStyle && role == MessageRole.USER,
                                             enableLiveBubbleBlur = true,
                                         ) {
                                             MarkdownBlock(
@@ -850,6 +865,8 @@ private fun BubbleSurface(
     overlayEnabled: Boolean,
     bubbleAlpha: Float,
     liquidGlassBubbles: Boolean = false,
+    telegramTime: String? = null,
+    telegramChecks: Boolean = false,
     onClick: (() -> Unit)? = null,
     // 本轮原型：用户与助手的普通文本气泡传 true（最终由 LiveBubbleBlurContext 与 final 条件决定）
     enableLiveBubbleBlur: Boolean = false,
@@ -1130,7 +1147,10 @@ private fun BubbleSurface(
                         .then(liveBubbleEdgeHighlightModifier)
                 )
             }
-            Column(modifier = Modifier.padding(8.dp)) { content() }
+            Column(modifier = Modifier.padding(8.dp)) {
+                content()
+                TelegramMeta(telegramTime, telegramChecks)
+            }
         }
     } else if (materialMode == DisplayMaterialMode.GLASS) {
         Box(
@@ -1194,7 +1214,10 @@ private fun BubbleSurface(
                         .then(liveBubbleEdgeHighlightModifier)
                 )
             }
-            Column(modifier = Modifier.padding(8.dp)) { content() }
+            Column(modifier = Modifier.padding(8.dp)) {
+                content()
+                TelegramMeta(telegramTime, telegramChecks)
+            }
         }
     } else if (hasImage) {
         Box(
@@ -1223,7 +1246,10 @@ private fun BubbleSurface(
                         .background(color.copy(alpha = effectiveAlpha))
                 )
             }
-            Column(modifier = Modifier.padding(8.dp)) { content() }
+            Column(modifier = Modifier.padding(8.dp)) {
+                content()
+                TelegramMeta(telegramTime, telegramChecks)
+            }
         }
     } else {
         Surface(
@@ -1237,7 +1263,10 @@ private fun BubbleSurface(
             },
             onClick = onClick ?: {},
         ) {
-            Column(modifier = Modifier.padding(8.dp)) { content() }
+            Column(modifier = Modifier.padding(8.dp)) {
+                content()
+                TelegramMeta(telegramTime, telegramChecks)
+            }
         }
     }
 }
@@ -1524,4 +1553,28 @@ internal fun VoiceMessageBubble(
         }
     }
 }
- 
+
+@Composable
+private fun TelegramMeta(time: String?, checks: Boolean) {
+    if (time == null) return
+    Text(
+        text = if (checks) "$time  ✓✓" else time,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+        modifier = Modifier.padding(top = 2.dp),
+    )
+}
+
+private fun telegramBubbleShape(
+    radius: Dp,
+    role: MessageRole,
+    telegram: Boolean,
+): RoundedCornerShape {
+    if (!telegram) return RoundedCornerShape(radius)
+    val tail = 5.dp
+    return if (role == MessageRole.USER) {
+        RoundedCornerShape(radius, radius, tail, radius)
+    } else {
+        RoundedCornerShape(radius, radius, radius, tail)
+    }
+}
