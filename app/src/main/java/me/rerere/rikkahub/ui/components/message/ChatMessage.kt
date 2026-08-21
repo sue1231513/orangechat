@@ -69,6 +69,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -535,7 +536,8 @@ private fun MessagePartsBlock(
                                                 key(segIndex) {
                                                     BubbleSurface(
                                                         imagePath = displaySettings.userBubbleImagePath,
-                                                        cornerRadius = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
+                                                        cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                                        telegramShape = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                                         color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
                                                         overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                                         bubbleAlpha = bubbleAlpha,
@@ -560,7 +562,8 @@ private fun MessagePartsBlock(
                                     } else {
                                         BubbleSurface(
                                             imagePath = displaySettings.userBubbleImagePath,
-                                            cornerRadius = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
+                                            cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                                        telegramShape = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                             color = displaySettings.userBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.secondaryContainer,
                                             overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                             bubbleAlpha = bubbleAlpha,
@@ -594,7 +597,8 @@ private fun MessagePartsBlock(
                                                 if (displaySettings.showAssistantBubble || telegramStyle) {
                                                     BubbleSurface(
                                                         imagePath = displaySettings.assistantBubbleImagePath,
-                                                        cornerRadius = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
+                                                        cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                                        telegramShape = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                                         color = displaySettings.assistantBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                                                         overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                                         bubbleAlpha = bubbleAlpha,
@@ -631,7 +635,8 @@ private fun MessagePartsBlock(
                                     if (displaySettings.showAssistantBubble || telegramStyle) {
                                         BubbleSurface(
                                             imagePath = displaySettings.assistantBubbleImagePath,
-                                            cornerRadius = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
+                                            cornerRadius = displaySettings.bubbleCornerRadius.dp,
+                                                        telegramShape = telegramBubbleShape(displaySettings.bubbleCornerRadius.dp, role, telegramStyle),
                                             color = displaySettings.assistantBubbleColor?.let { it.toComposeColor() } ?: MaterialTheme.colorScheme.surfaceContainerHigh,
                                             overlayEnabled = displaySettings.bubbleImageOverlayEnabled,
                                             bubbleAlpha = bubbleAlpha,
@@ -861,6 +866,7 @@ private fun MessagePartsBlock(
 private fun BubbleSurface(
     imagePath: String,
     cornerRadius: Dp,
+    telegramShape: Shape? = null,
     color: Color,
     overlayEnabled: Boolean,
     bubbleAlpha: Float,
@@ -1088,7 +1094,7 @@ private fun BubbleSurface(
             }
         }
     }
-    val shape = RoundedCornerShape(cornerRadius)
+    val shape = telegramShape ?: RoundedCornerShape(cornerRadius)
     val hasImage = imagePath.isNotBlank() && java.io.File(imagePath).exists()
     val frostedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = LIQUID_GLASS_BORDER_ALPHA)
     if (materialMode == DisplayMaterialMode.FLAT && liquidGlassBubbles && !hasImage) {
