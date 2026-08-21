@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - glass-fx-only
+      - orangechat-ib-tg
   workflow_dispatch:
 
 permissions:
