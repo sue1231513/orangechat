@@ -1,10 +1,4 @@
-/*
- * 橘瓣 OrangeChat
- * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
- * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
- */
-
-package me.rerere.rikkahub.ui.theme.presets.custom
+package me.rerere.rikkahub.ui.theme.presets
 
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
@@ -14,11 +8,15 @@ import androidx.compose.ui.res.stringResource
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.theme.PresetTheme
 
-val AmberDockThemePreset by lazy {
+/**
+ * Internal：从 IB 的亮/暗层级提炼出的低饱和暖灰主题。
+ * 不依赖壁纸、毛玻璃或气泡特效，只负责稳定的颜色层级。
+ */
+val InternalThemePreset by lazy {
     PresetTheme(
-        id = "amberdock",
+        id = "internal",
         name = {
-            Text(stringResource(id = R.string.theme_name_amberdock))
+            Text(stringResource(id = R.string.theme_name_internal))
         },
         standardLight = lightScheme,
         standardDark = darkScheme,

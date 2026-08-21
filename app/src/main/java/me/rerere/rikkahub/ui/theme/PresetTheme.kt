@@ -9,13 +9,13 @@ package me.rerere.rikkahub.ui.theme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import me.rerere.rikkahub.ui.theme.presets.AutumnThemePreset
+import me.rerere.rikkahub.ui.theme.presets.InternalThemePreset
 import me.rerere.rikkahub.ui.theme.presets.BlackThemePreset
 import me.rerere.rikkahub.ui.theme.presets.ClaudeThemePreset
 import me.rerere.rikkahub.ui.theme.presets.LiquidGlassThemePreset
 import me.rerere.rikkahub.ui.theme.presets.OceanThemePreset
 import me.rerere.rikkahub.ui.theme.presets.SakuraThemePreset
 import me.rerere.rikkahub.ui.theme.presets.SpringThemePreset
-import me.rerere.rikkahub.ui.theme.presets.custom.AmberDockThemePreset
 import me.rerere.rikkahub.ui.theme.presets.custom.HarborThemePreset
 import me.rerere.rikkahub.ui.theme.presets.custom.NestCaramelThemePreset
 import me.rerere.rikkahub.ui.theme.presets.custom.NestRoseThemePreset
@@ -36,9 +36,9 @@ val PresetThemes by lazy {
     listOf(
         SakuraThemePreset,
         OceanThemePreset,
+        InternalThemePreset,
         PearlTideThemePreset,
         HarborThemePreset,
-        AmberDockThemePreset,
         NestRoseThemePreset,
         NestCaramelThemePreset,
         SpringThemePreset,

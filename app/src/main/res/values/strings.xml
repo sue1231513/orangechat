@@ -1106,12 +1106,12 @@
   <string name="text_area_save">Save</string>
   <string name="theme_name_autumn">Autumn Yellow</string>
   <string name="theme_name_claude">Claude</string>
+  <string name="theme_name_internal">Internal</string>
   <string name="theme_name_black">Neutral Black</string>
     <string name="theme_name_ocean">Ocean Blue</string>
     <string name="theme_name_pearltide">Pearl Tide</string>
     <string name="theme_name_harbor">Harbor</string>
-    <string name="theme_name_amberdock">Amber Dock</string>
-    <string name="theme_name_nestrose">Nest Rose</string>
+      <string name="theme_name_nestrose">Nest Rose</string>
     <string name="theme_name_nestcaramel">Nest Caramel</string>
   <string name="theme_name_sakura">Sakura Pink</string>
   <string name="theme_name_spring">Meadow Green</string>
