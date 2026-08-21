@@ -338,17 +338,22 @@ class ResponseAPI(
                                     part.metadata?.get("reasoning_id")?.jsonPrimitiveOrNull?.contentOrNull?.let {
                                         put("id", it)
                                     }
+                                    val encryptedContent = part.metadata
+                                        ?.get("encrypted_content")
+                                        ?.jsonPrimitiveOrNull
+                                        ?.contentOrNull
+                                    // Response API 对有 encrypted_content 的历史 reasoning 只接受密文。
+                                    // 旧实现会同时回传 reasoning 明文 summary，导致服务端重放已加密推理时拒绝请求。
                                     put("summary", buildJsonArray {
-                                        add(buildJsonObject {
-                                            put("type", "summary_text")
-                                            put("text", part.reasoning)
-                                        })
+                                        if (encryptedContent == null) {
+                                            add(buildJsonObject {
+                                                put("type", "summary_text")
+                                                put("text", part.reasoning)
+                                            })
+                                        }
                                     })
-                                    part.metadata?.get("encrypted_content")?.jsonPrimitiveOrNull?.contentOrNull?.let {
-                                        put(
-                                            "encrypted_content",
-                                            part.metadata?.get("encrypted_content")?.jsonPrimitive?.contentOrNull ?: ""
-                                        )
+                                    encryptedContent?.let {
+                                        put("encrypted_content", it)
                                     }
                                 })
                             }

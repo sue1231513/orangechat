@@ -8,6 +8,8 @@ package me.rerere.ai.provider.providers.openai
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -313,6 +315,25 @@ class ResponseAPIMessageTest {
                 lastCallIndex = i
             }
         }
+    }
+
+    @Test
+    fun `encrypted reasoning should not replay plaintext summary`() {
+        val reasoning = UIMessagePart.Reasoning(
+            reasoning = "private reasoning that must not be replayed",
+        ).also {
+            it.metadata = buildJsonObject {
+                put("reasoning_id", JsonPrimitive("rsn_test"))
+                put("encrypted_content", JsonPrimitive("encrypted_blob"))
+            }
+        }
+        val result = invokeBuildMessages(
+            listOf(UIMessage(role = MessageRole.ASSISTANT, parts = listOf(reasoning)))
+        )
+        val item = result.single().jsonObject
+        assertEquals("reasoning", item["type"]?.jsonPrimitive?.content)
+        assertEquals("encrypted_blob", item["encrypted_content"]?.jsonPrimitive?.content)
+        assertTrue(item["summary"]?.jsonArray?.isEmpty() == true)
     }
 
     @Test
