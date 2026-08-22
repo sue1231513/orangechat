@@ -146,7 +146,26 @@ fun createStorageInfoTool(context: Context): Tool = Tool(
                                                             putJsonObject(child.name) {
                                                                 put("bytes", dirSize(child))
                                                                 put("is_directory", child.isDirectory)
-                                                                if (child.isDirectory) put("file_count", countFiles(child))
+                                                                if (child.isDirectory) {
+                                                                    put("file_count", countFiles(child))
+                                                                    // linux 是 rootfs 本体，一级目录（usr/var/root…）仍过粗；
+                                                                    // 继续展开一层，只做诊断，绝不在统计时删除。
+                                                                    if (child.name == "linux") {
+                                                                        putJsonObject("children") {
+                                                                            child.listFiles()
+                                                                                ?.sortedByDescending { dirSize(it) }
+                                                                                ?.forEach { linuxChild ->
+                                                                                    putJsonObject(linuxChild.name) {
+                                                                                        put("bytes", dirSize(linuxChild))
+                                                                                        put("is_directory", linuxChild.isDirectory)
+                                                                                        if (linuxChild.isDirectory) {
+                                                                                            put("file_count", countFiles(linuxChild))
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                        }
+                                                                    }
+                                                                }
                                                             }
                                                         }
                                                 }
