@@ -125,6 +125,23 @@ fun createStorageInfoTool(context: Context): Tool = Tool(
                             }
                         }
 
+                        // workspaces/ 再展开一层：rootfs 的 .git、构建缓存、依赖目录
+                        // 往往比整个 workspace 目录更能说明问题。
+                        val workspacesDir = File(filesDir, "workspaces")
+                        if (workspacesDir.isDirectory) {
+                            putJsonObject("workspace_roots") {
+                                workspacesDir.listFiles()
+                                    ?.sortedByDescending { dirSize(it) }
+                                    ?.forEach { root ->
+                                        putJsonObject(root.name) {
+                                            put("bytes", dirSize(root))
+                                            put("is_directory", root.isDirectory)
+                                            if (root.isDirectory) put("file_count", countFiles(root))
+                                        }
+                                    }
+                            }
+                        }
+
                         // cache/ 下逐个子目录
                         putJsonObject("cache_children") {
                             cacheDir.listFiles()?.sortedByDescending { dirSize(it) }?.forEach { child ->
