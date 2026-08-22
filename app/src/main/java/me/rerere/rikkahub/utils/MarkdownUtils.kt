@@ -10,8 +10,19 @@ package me.rerere.rikkahub.utils
  * 移除字符串中的Markdown格式
  * @return 移除Markdown格式后的纯文本
  */
+/**
+ * 剥掉只供客户端解析的内部协议，不触碰正常正文。
+ * 必须在「只朗读引号内容」的提取之前调用：moodlet 的 reason 属性本身带引号，
+ * 先提取会只留下 reason 文本，之后再也无法辨认它原本属于 silent 标签。
+ */
+fun String.stripTtsInternalMarkup(): String = this
+    .replace(Regex("(?is)<silent\\b[^>]*>.*?</silent\\s*>"), "")
+    .replace(Regex("(?m)^\\s*\\[JUMP]\\s*$"), "")
+
 fun String.stripMarkdown(): String {
     return this
+        // 兜底：电话、工具等路径即使没预处理，也不能把内部协议念出去。
+        .stripTtsInternalMarkup()
         // 移除代码块 (```...``` 和 `...`)
         .replace(Regex("```[\\s\\S]*?```|`[^`]*?`"), "")
         // 移除图片和链接，但保留其文本内容
