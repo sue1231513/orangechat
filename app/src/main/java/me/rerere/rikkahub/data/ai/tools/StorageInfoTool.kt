@@ -160,6 +160,21 @@ fun createStorageInfoTool(context: Context): Tool = Tool(
                                                                                         put("is_directory", linuxChild.isDirectory)
                                                                                         if (linuxChild.isDirectory) {
                                                                                             put("file_count", countFiles(linuxChild))
+                                                                                            // root 是包管理/构建缓存最常驻的地方；var 常放日志与 apt 缓存。
+                                                                                            // 只展开这两处，避免诊断 JSON 膨胀成另一份大文件。
+                                                                                            if (linuxChild.name == "root" || linuxChild.name == "var") {
+                                                                                                putJsonObject("children") {
+                                                                                                    linuxChild.listFiles()
+                                                                                                        ?.sortedByDescending { dirSize(it) }
+                                                                                                        ?.forEach { leaf ->
+                                                                                                            putJsonObject(leaf.name) {
+                                                                                                                put("bytes", dirSize(leaf))
+                                                                                                                put("is_directory", leaf.isDirectory)
+                                                                                                                if (leaf.isDirectory) put("file_count", countFiles(leaf))
+                                                                                                            }
+                                                                                                        }
+                                                                                                }
+                                                                                            }
                                                                                         }
                                                                                     }
                                                                                 }
