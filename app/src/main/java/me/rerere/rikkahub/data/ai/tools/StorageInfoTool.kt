@@ -136,7 +136,21 @@ fun createStorageInfoTool(context: Context): Tool = Tool(
                                         putJsonObject(root.name) {
                                             put("bytes", dirSize(root))
                                             put("is_directory", root.isDirectory)
-                                            if (root.isDirectory) put("file_count", countFiles(root))
+                                            if (root.isDirectory) {
+                                                put("file_count", countFiles(root))
+                                                // rootfs 内再拆一层：这里才能区分系统层、项目、.gradle 与缓存。
+                                                putJsonObject("children") {
+                                                    root.listFiles()
+                                                        ?.sortedByDescending { dirSize(it) }
+                                                        ?.forEach { child ->
+                                                            putJsonObject(child.name) {
+                                                                put("bytes", dirSize(child))
+                                                                put("is_directory", child.isDirectory)
+                                                                if (child.isDirectory) put("file_count", countFiles(child))
+                                                            }
+                                                        }
+                                                }
+                                            }
                                         }
                                     }
                             }
