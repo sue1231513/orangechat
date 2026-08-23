@@ -176,7 +176,6 @@ import me.rerere.rikkahub.ui.pages.voice.IncomingCallPage
 import me.rerere.rikkahub.ui.pages.voice.VoiceCallPage
 import me.rerere.rikkahub.service.VoiceCallService
 import me.rerere.rikkahub.ui.pages.webview.WebViewPage
-import me.rerere.rikkahub.ui.theme.GLASS_BACKGROUND_THEMES
 import me.rerere.rikkahub.ui.theme.THEME_BACKGROUND_SCRIM
 import me.rerere.rikkahub.ui.theme.ScrimColors
 import me.rerere.rikkahub.ui.theme.LocalDarkMode
@@ -472,8 +471,7 @@ class RouteActivity : ComponentActivity() {
                                                         Color(0xFF3A2428).copy(alpha = 0.10f),
                                                         Color.Transparent,
                                                     ),
-                                                    center = Offset(0.88f, 0.16f),
-                                                    radius = 1200f,
+                                                    radius = Float.POSITIVE_INFINITY,
                                                 )
                                             )
                                     } else {
@@ -495,8 +493,7 @@ class RouteActivity : ComponentActivity() {
                                                         Color(0xFFF2D9D0).copy(alpha = 0.12f),
                                                         Color.Transparent,
                                                     ),
-                                                    center = Offset(0.90f, 0.10f),
-                                                    radius = 1100f,
+                                                    radius = Float.POSITIVE_INFINITY,
                                                 )
                                             )
                                     }
