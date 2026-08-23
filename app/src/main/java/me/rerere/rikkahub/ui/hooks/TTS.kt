@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
@@ -7,6 +7,8 @@
 package me.rerere.rikkahub.ui.hooks
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -14,8 +16,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.withContext
+import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.datastore.getSelectedTTSProvider
 import me.rerere.rikkahub.utils.stripMarkdown
@@ -26,8 +32,12 @@ import me.rerere.tts.controller.TtsController
 import org.koin.compose.koinInject
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.io.File
+import java.io.FileOutputStream
+import java.util.UUID
 
 private const val TAG = "TTS"
+private const val VOICE_MESSAGES_DIR = "voice_messages"
 
 /**
  * Composable function to remember and manage custom TTS state.
@@ -98,10 +108,15 @@ interface CustomTtsState {
     fun cleanup()
 
     /**
-     * 流式朗读: 追加一段文本到 TTS 队列, 不清空当前播放.
-     * 用于语音通话中"边生成边朗读"的场景.
-     *
-     * @param text 要追加朗读的文本片段
+     * 把一条文本合成为可持久化的语音消息。
+     * 与 speak() 分开：不进入实时播放队列，完整收完音频后写入 files/voice_messages，
+     * 重听直接播本地文件，不再请求 provider 或消耗字数额度。
+     */
+    suspend fun createVoiceMessage(text: String): UIMessagePart.VoiceMessage?
+
+    /**
+     * 流式朗读: 追加一段文本到 TTS 队列, 不清空当前播放。
+     * 用于语音通话中边生成边朗读的场景。
      */
     fun enqueueText(text: String)
 }
@@ -165,6 +180,68 @@ internal class CustomTtsStateImpl(
         if (processed.isBlank()) return
         controller.speak(processed, flush = false)
     }
+
+    override suspend fun createVoiceMessage(text: String): UIMessagePart.VoiceMessage? =
+        withContext(Dispatchers.IO) {
+            val processed = text.stripMarkdown()
+            if (processed.isBlank()) return@withContext null
+
+            val provider = settingsStore.settingsFlow.first().getSelectedTTSProvider()
+                ?: run {
+                    Log.w(TAG, "createVoiceMessage: no TTS provider selected")
+                    return@withContext null
+                }
+
+            val voiceDir = File(context.filesDir, VOICE_MESSAGES_DIR).apply { mkdirs() }
+            val tempFile = File(voiceDir, ".${UUID.randomUUID()}.part")
+            var extension = "mp3"
+            try {
+                FileOutputStream(tempFile).use { output ->
+                    ttsManager.generateSpeech(provider, me.rerere.tts.model.TTSRequest(processed))
+                        .collect { chunk ->
+                            extension = when (chunk.format) {
+                                me.rerere.tts.model.AudioFormat.MP3 -> "mp3"
+                                me.rerere.tts.model.AudioFormat.WAV -> "wav"
+                                me.rerere.tts.model.AudioFormat.OGG -> "ogg"
+                                me.rerere.tts.model.AudioFormat.AAC -> "aac"
+                                me.rerere.tts.model.AudioFormat.OPUS -> "opus"
+                                me.rerere.tts.model.AudioFormat.PCM -> "pcm"
+                            }
+                            if (chunk.data.isNotEmpty()) output.write(chunk.data)
+                        }
+                }
+                if (tempFile.length() == 0L) {
+                    tempFile.delete()
+                    return@withContext null
+                }
+
+                val voiceFile = File(voiceDir, "voice-${System.currentTimeMillis()}-${UUID.randomUUID()}.$extension")
+                if (!tempFile.renameTo(voiceFile)) {
+                    tempFile.copyTo(voiceFile, overwrite = true)
+                    tempFile.delete()
+                }
+                val durationMs = runCatching {
+                    val retriever = MediaMetadataRetriever()
+                    try {
+                        retriever.setDataSource(context, Uri.fromFile(voiceFile))
+                        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                            ?.toLongOrNull() ?: 0L
+                    } finally {
+                        retriever.release()
+                    }
+                }.getOrDefault(0L)
+
+                UIMessagePart.VoiceMessage(
+                    url = Uri.fromFile(voiceFile).toString(),
+                    duration = durationMs,
+                    transcript = processed,
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "createVoiceMessage failed", e)
+                tempFile.delete()
+                null
+            }
+        }
 
     override fun cleanup() {
         controller.dispose()
