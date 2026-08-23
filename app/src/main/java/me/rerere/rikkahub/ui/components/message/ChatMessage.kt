@@ -524,8 +524,22 @@ private fun MessagePartsBlock(
                         
                         SelectionContainer {
                             Column {
+                                if (role == MessageRole.ASSISTANT && parts.any { it is UIMessagePart.VoiceMessage }) {
+                                    // 已生成持久语音条时，文字默认收起，避免同一条回复占两份屏幕。
+                                    // 语音条仍在后面的 part 分支渲染。
+                                } else {
                                 if (role == MessageRole.USER) {
-                                    if (assistant?.splitUserBubbleByLine == true) {
+                                    if (!displaySettings.showUserBubble) {
+                                        MarkdownBlock(
+                                            content = displayText.replaceRegexes(
+                                                assistant = assistant,
+                                                scope = AssistantAffectScope.USER,
+                                                visual = true,
+                                            ),
+                                            onClickCitation = handleClickCitation,
+                                            modifier = Modifier.animateContentSize(),
+                                        )
+                                    } else if (assistant?.splitUserBubbleByLine == true) {
                                         // 分气泡: 按用户输入的换行 (\n) 拆成多个独立气泡,
                                         // 拆分逻辑见 splitIntoBubbleSegments (会保护代码块/表格内部的换行)
                                         val bubbleSegments = remember(displayText) {
@@ -670,7 +684,7 @@ private fun MessagePartsBlock(
                                         )
                                     }
                                 }
-                                
+                                }
                             }
                         }
                     }
@@ -1470,6 +1484,7 @@ internal fun VoiceMessageBubble(
 ) {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
+    var showTranscript by remember(voiceMessage.url) { mutableStateOf(false) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
  
     val durationSec = (voiceMessage.duration / 1000).coerceAtLeast(1)
@@ -1563,15 +1578,28 @@ internal fun VoiceMessageBubble(
                     else MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
-            // Show transcript text below the voice bubble (like WeChat)
+            // 语音条默认只留声音；需要核对原文时再按需展开，避免同一回复占两份屏幕。
             if (voiceMessage.transcript.isNotBlank()) {
+                TextButton(
+                    onClick = { showTranscript = !showTranscript },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 0.dp),
+                ) {
+                    Text(
+                        text = if (showTranscript) "收起文字" else "显示文字",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.68f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                    )
+                }
+            }
+            if (showTranscript && voiceMessage.transcript.isNotBlank()) {
                 Text(
                     text = voiceMessage.transcript,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(top = 4.dp),
-                    maxLines = 3,
+                    modifier = Modifier.padding(top = 2.dp),
+                    maxLines = 12,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

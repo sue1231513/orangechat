@@ -481,54 +481,32 @@ class RouteActivity : ComponentActivity() {
                                 }
 
                                 "creamrose" -> {
-                                    // 奶油玫瑰不复用珍珠潮汐蓝图。两态各自从底色起画：
-                                    // 浅色是奶油纸感与低饱和玫瑰雾，深色是酒红褐的暗面，
-                                    // 切深色时不靠把浅图压黑，避免蓝色从玻璃层底下透出来。
-                                    if (LocalDarkMode.current) {
-                                        base
-                                            .background(
-                                                Brush.verticalGradient(
-                                                    colors = listOf(
-                                                        Color(0xFF2A1718),
-                                                        Color(0xFF1C1412),
-                                                        Color(0xFF241615),
-                                                        Color(0xFF1C1412),
-                                                    )
-                                                )
-                                            )
-                                            .background(
-                                                Brush.radialGradient(
-                                                    colors = listOf(
-                                                        Color(0xFF8B5558).copy(alpha = 0.20f),
-                                                        Color(0xFF3A2428).copy(alpha = 0.10f),
-                                                        Color.Transparent,
-                                                    ),
-                                                    radius = Float.POSITIVE_INFINITY,
-                                                )
-                                            )
+                                    val creamRosePainter = painterResource(
+                                        id = if (LocalDarkMode.current) {
+                                            R.drawable.creamrose_chat_bg_dark
+                                        } else {
+                                            R.drawable.creamrose_chat_bg_light
+                                        }
+                                    )
+                                    val creamRoseScrim = if (LocalDarkMode.current) {
+                                        listOf(
+                                            Color(0xFF3A2428).copy(alpha = 0.26f),
+                                            Color(0xFF1C1412).copy(alpha = 0.24f),
+                                            Color(0xFF1C1412).copy(alpha = 0.66f),
+                                        )
                                     } else {
-                                        base
-                                            .background(
-                                                Brush.verticalGradient(
-                                                    colors = listOf(
-                                                        Color(0xFFFFFCF8),
-                                                        Color(0xFFF6F1EB),
-                                                        Color(0xFFF2E5DF),
-                                                        Color(0xFFF6F1EB),
-                                                    )
-                                                )
-                                            )
-                                            .background(
-                                                Brush.radialGradient(
-                                                    colors = listOf(
-                                                        Color(0xFFD4A0A3).copy(alpha = 0.24f),
-                                                        Color(0xFFF2D9D0).copy(alpha = 0.12f),
-                                                        Color.Transparent,
-                                                    ),
-                                                    radius = Float.POSITIVE_INFINITY,
-                                                )
-                                            )
+                                        listOf(
+                                            Color(0xFFF2D9D0).copy(alpha = 0.16f),
+                                            Color(0xFFF6F1EB).copy(alpha = 0.10f),
+                                            Color(0xFFF6F1EB).copy(alpha = 0.34f),
+                                        )
                                     }
+                                    base
+                                        .paint(
+                                            painter = creamRosePainter,
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                        .background(Brush.verticalGradient(creamRoseScrim))
                                 }
 
                                 else -> base

@@ -737,6 +737,8 @@
   <string name="setting_display_page_send_on_enter_desc">Press Enter to send message instead of adding a new line</string>
   <string name="setting_display_page_send_on_enter_title">Send on Enter</string>
   <string name="setting_display_page_show_assistant_bubble_desc">Whether to show bubble background for assistant messages</string>
+  <string name="setting_display_page_show_user_bubble_title">Show User Message Bubble</string>
+  <string name="setting_display_page_show_user_bubble_desc">Whether to show bubble background for user messages</string>
   <string name="setting_display_page_show_assistant_bubble_title">Show Assistant Message Bubble</string>
   <string name="setting_display_page_show_date_below_name_desc">Whether to show message date below nickname or model name</string>
   <string name="setting_display_page_show_date_below_name_title">Show Date Below Name</string>

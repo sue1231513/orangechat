@@ -674,6 +674,8 @@ data class DisplaySetting(
     val useAppIconStyleLoadingIndicator: Boolean = true,
     val showUserAvatar: Boolean = true,
     val showAssistantBubble: Boolean = false,
+    /** 用户消息是否显示气泡背景；关闭后原生与 Telegram 布局都会真正绕开 BubbleSurface。 */
+    val showUserBubble: Boolean = true,
     /** 关闭时保持原生 Rikka；开启后使用 Telegram 式双侧消息气泡。 */
     val chatBubbleStyle: ChatBubbleStyle = ChatBubbleStyle.RIKKA,
     val showModelIcon: Boolean = true,

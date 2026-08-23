@@ -122,6 +122,18 @@ fun SettingDisplayMessagePage(vm: SettingVM = koinViewModel()) {
                         },
                     )
                     item(
+                        headlineContent = { Text(stringResource(R.string.setting_display_page_show_user_bubble_title)) },
+                        supportingContent = { Text(stringResource(R.string.setting_display_page_show_user_bubble_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = displaySetting.showUserBubble,
+                                onCheckedChange = {
+                                    updateDisplaySetting(displaySetting.copy(showUserBubble = it))
+                                }
+                            )
+                        },
+                    )
+                    item(
                         headlineContent = { Text(stringResource(R.string.setting_display_page_show_assistant_bubble_title)) },
                         supportingContent = { Text(stringResource(R.string.setting_display_page_show_assistant_bubble_desc)) },
                         trailingContent = {
