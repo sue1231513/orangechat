@@ -448,6 +448,38 @@ class RouteActivity : ComponentActivity() {
                                         )
                                 }
 
+                                "harbor" -> {
+                                    val scrim = THEME_BACKGROUND_SCRIM.getValue("harbor")
+                                    val painted = base
+                                        .paint(
+                                            painter = painterResource(id = R.drawable.harbor_chat_bg),
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                    if (LocalDarkMode.current) {
+                                        painted
+                                            .background(Color(0xFF141A22).copy(alpha = 0.66f))
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF1E2A36).copy(alpha = 0.38f),
+                                                        Color(0xFF111820).copy(alpha = 0.72f),
+                                                    )
+                                                )
+                                            )
+                                    } else {
+                                        painted.background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color(scrim.top.toLong()),
+                                                    Color(scrim.accent.toLong()).copy(alpha = 0.12f),
+                                                    Color(scrim.bottom.toLong()).copy(alpha = 0.10f),
+                                                    Color(scrim.bottom.toLong()),
+                                                )
+                                            )
+                                        )
+                                    }
+                                }
+
                                 "creamrose" -> {
                                     // 奶油玫瑰不复用珍珠潮汐蓝图。两态各自从底色起画：
                                     // 浅色是奶油纸感与低饱和玫瑰雾，深色是酒红褐的暗面，

@@ -49,11 +49,12 @@ fun popupContainerColor(baseContainerColor: Color): Color {
     return baseContainerColor.copy(alpha = popupAlpha)
 }
 
-internal val GLASS_BACKGROUND_THEMES = setOf("pearltide", "creamrose")
+internal val GLASS_BACKGROUND_THEMES = setOf("pearltide", "harbor", "creamrose")
 
 internal val THEME_BACKGROUND_SCRIM = mapOf(
-    // 珍珠潮汐仍用自己的蓝色底图；奶油玫瑰在 RouteActivity 按深浅态绘制独立背景层。
+    // 三个主题各有自己的底图/底色逻辑，不能互相复用。
     "pearltide" to ScrimColors(0x80C8D8E4u, 0x60F7FAFCu, 0x38C8D8E4u),
+    "harbor" to ScrimColors(0x80A8B4C0u, 0x60F4F2EFu, 0x38A8B4C0u),
 )
 
 data class ScrimColors(
