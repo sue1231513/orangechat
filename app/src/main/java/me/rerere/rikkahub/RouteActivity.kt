@@ -481,24 +481,22 @@ class RouteActivity : ComponentActivity() {
                                 }
 
                                 "creamrose" -> {
+                                    // 奶油玫瑰与 Harbor 共用同一张底图和铺图逻辑，
+                                    // 只替换上层 scrim；这样两者的玻璃/层级效果完全一致。
                                     val creamRosePainter = painterResource(
-                                        id = if (LocalDarkMode.current) {
-                                            R.drawable.creamrose_chat_bg_dark
-                                        } else {
-                                            R.drawable.creamrose_chat_bg_light
-                                        }
+                                        id = R.drawable.harbor_chat_bg
                                     )
                                     val creamRoseScrim = if (LocalDarkMode.current) {
                                         listOf(
-                                            Color(0xFF3A2428).copy(alpha = 0.26f),
-                                            Color(0xFF1C1412).copy(alpha = 0.24f),
-                                            Color(0xFF1C1412).copy(alpha = 0.66f),
+                                            Color(0xFF3A2428).copy(alpha = 0.32f),
+                                            Color(0xFF241719).copy(alpha = 0.40f),
+                                            Color(0xFF1C1412).copy(alpha = 0.74f),
                                         )
                                     } else {
                                         listOf(
-                                            Color(0xFFF2D9D0).copy(alpha = 0.16f),
-                                            Color(0xFFF6F1EB).copy(alpha = 0.10f),
-                                            Color(0xFFF6F1EB).copy(alpha = 0.34f),
+                                            Color(0xFFF2D9D0).copy(alpha = 0.24f),
+                                            Color(0xFFF6F1EB).copy(alpha = 0.16f),
+                                            Color(0xFFF6F1EB).copy(alpha = 0.42f),
                                         )
                                     }
                                     base
