@@ -431,12 +431,26 @@ class RouteActivity : ComponentActivity() {
                             when (settings.themeId) {
                                 "pearltide" -> {
                                     val scrim = THEME_BACKGROUND_SCRIM.getValue("pearltide")
-                                    base
+                                    val painted = base
                                         .paint(
                                             painter = painterResource(id = R.drawable.pearltide_chat_bg),
                                             contentScale = ContentScale.Crop,
                                         )
-                                        .background(
+                                    // 以前 Pearl Tide 没有 dark 分支，深色模式仍套着浅色叶子图与白色 scrim。
+                                    // 保留同一张潮汐图的纹理，但改用深海蓝灰遮罩，让深色是真正的夜潮。
+                                    if (LocalDarkMode.current) {
+                                        painted
+                                            .background(Color(0xFF111820).copy(alpha = 0.64f))
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF26384B).copy(alpha = 0.42f),
+                                                        Color(0xFF141D28).copy(alpha = 0.72f),
+                                                    )
+                                                )
+                                            )
+                                    } else {
+                                        painted.background(
                                             Brush.verticalGradient(
                                                 colors = listOf(
                                                     Color(scrim.top.toLong()),
@@ -446,6 +460,7 @@ class RouteActivity : ComponentActivity() {
                                                 )
                                             )
                                         )
+                                    }
                                 }
 
                                 "harbor" -> {
