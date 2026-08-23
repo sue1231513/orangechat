@@ -41,21 +41,63 @@ private fun countFiles(file: File): Int {
     return count
 }
 
+private fun clearDirectoryContents(file: File): Pair<Long, Int> {
+    if (!file.isDirectory) return 0L to 0
+    var freedBytes = 0L
+    var deletedEntries = 0
+    file.listFiles()?.forEach { child ->
+        val size = dirSize(child)
+        if (child.deleteRecursively()) {
+            freedBytes += size
+            deletedEntries++
+        }
+    }
+    return freedBytes to deletedEntries
+}
+
+/**
+ * Rootfs 里可安全再生的缓存目录。这里故意不包含 .gradle / .local：
+ * 它们可能含构建环境和工作区运行时数据，清掉会让离线编译或工具环境断掉。
+ */
+private fun rootfsSafeCacheDirs(filesDir: File): List<File> {
+    val rootfs = File(filesDir, "workspaces")
+        .listFiles()
+        ?.firstOrNull { File(it, "linux").isDirectory }
+        ?.resolve("linux")
+        ?: return emptyList()
+    return listOf(
+        File(rootfs, "tmp"),
+        File(rootfs, "var/cache"),
+        File(rootfs, "root/.npm"),
+        File(rootfs, "root/.cache"),
+    )
+}
+
 fun createStorageInfoTool(context: Context): Tool = Tool(
     name = "get_storage_info",
-    description = "Get storage usage info: device-level free/total space, plus a per-directory " +
-        "breakdown of this app's own private storage (files/, cache/, databases/ and each " +
-        "subfolder), with file counts. Use this to find what is consuming app data space.",
+    description = "Get storage usage info, or clear only the app workspace rootfs's safe, " +
+        "regenerable caches (tmp, package caches). Never clears projects, chat data, Gradle, " +
+        "or runtime data. action: inspect (default) or clear_safe_rootfs_caches.",
     needsApproval = true,
     parameters = {
         InputSchema.Obj(
-            properties = buildJsonObject {}
+            properties = buildJsonObject {
+                putJsonObject("action") {
+                    put("type", "string")
+                    put("description", "inspect (default) or clear_safe_rootfs_caches")
+                }
+            }
         )
     },
-    execute = { _ ->
+    execute = { input ->
         try {
+            val action = input.toString()
+                .let { raw -> Regex("\\\"action\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").find(raw)?.groupValues?.getOrNull(1) }
+                ?: "inspect"
+            val clearSafeCaches = action == "clear_safe_rootfs_caches"
             val result = buildJsonObject {
                 put("success", true)
+                put("action", action)
 
                 // ── 设备整体空间 ──
                 try {
@@ -100,6 +142,24 @@ fun createStorageInfoTool(context: Context): Tool = Tool(
                 // 系统设置里的「数据」是这几块之和，光看总数无法判断谁在堆。
                 try {
                     val filesDir = context.filesDir
+                    if (clearSafeCaches) {
+                        var freedBytes = 0L
+                        var deletedEntries = 0
+                        putJsonObject("cleared_rootfs_caches") {
+                            rootfsSafeCacheDirs(filesDir).forEach { dir ->
+                                val (freed, entries) = clearDirectoryContents(dir)
+                                freedBytes += freed
+                                deletedEntries += entries
+                                putJsonObject(dir.path.substringAfter("/linux/")) {
+                                    put("freed_bytes", freed)
+                                    put("deleted_top_level_entries", entries)
+                                }
+                            }
+                            put("total_freed_bytes", freedBytes)
+                            put("total_deleted_top_level_entries", deletedEntries)
+                            put("note", "Only tmp, var/cache, root/.npm and root/.cache were cleared. .gradle, .local, projects and chat data were preserved.")
+                        }
+                    }
                     val cacheDir = context.cacheDir
                     // databases 与 files 同级
                     val dataRoot = filesDir.parentFile
