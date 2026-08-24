@@ -12,11 +12,17 @@ package me.rerere.rikkahub.utils
  */
 /**
  * 剥掉只供客户端解析的内部协议，不触碰正常正文。
- * 必须在「只朗读引号内容」的提取之前调用：moodlet 的 reason 属性本身带引号，
- * 先提取会只留下 reason 文本，之后再也无法辨认它原本属于 silent 标签。
+ * 兼容 moodlet 的完整标签、自闭合标签，以及模型流式输出留下的末尾残缺标签。
+ * 必须在「只朗读引号内容」的提取之前调用：reason 属性本身带引号，
+ * 先提取会只留下 reason，之后再无法辨认它属于 silent 标签。
  */
 fun String.stripTtsInternalMarkup(): String = this
+    // 完整 moodlet：<silent ...>...</silent>
     .replace(Regex("(?is)<silent\\b[^>]*>.*?</silent\\s*>"), "")
+    // 自闭合 moodlet：<silent ... />
+    .replace(Regex("(?is)<silent\\b[^>]*/\\s*>"), "")
+    // 连闭合尖括号都没来得及输出的流式残片；moodlet 约定只在回复末尾出现。
+    .replace(Regex("(?is)\\s*<silent\\b.*$"), "")
     .replace(Regex("(?m)^\\s*\\[JUMP]\\s*$"), "")
 
 fun String.stripMarkdown(): String {
