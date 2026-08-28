@@ -15,11 +15,4 @@ sealed class AppEvent {
      * 由 request_voice_call 工具发出, RouteActivity 监听后弹出来电界面.
      */
     data class RequestVoiceCall(val conversationId: String) : AppEvent()
-
-    /** MCP OAuth 授权完成后经 deep link 回传的结果。 */
-    data class McpOAuthCallback(
-        val state: String?,
-        val code: String?,
-        val error: String?,
-    ) : AppEvent()
 }

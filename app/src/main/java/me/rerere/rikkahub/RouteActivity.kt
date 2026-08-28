@@ -385,7 +385,6 @@ class RouteActivity : ComponentActivity() {
                 when (event) {
                     is AppEvent.Speak -> tts.speak(event.text)
                     is AppEvent.EmojiSelected -> { /* handled in UIAvatar */ }
-                    is AppEvent.McpOAuthCallback -> Unit // 由 McpManager 消费
                     is AppEvent.RequestVoiceCall -> {
                         val convId = event.conversationId
                         // 单通话守卫: 已有通话进行中就不重复弹

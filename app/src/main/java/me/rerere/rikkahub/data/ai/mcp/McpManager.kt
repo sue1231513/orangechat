@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
@@ -25,21 +25,14 @@ import io.modelcontextprotocol.kotlin.sdk.types.Implementation
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
 import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.ClassDiscriminatorMode
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -49,8 +42,6 @@ import me.rerere.rikkahub.AppScope
 import me.rerere.rikkahub.data.ai.mcp.transport.SseClientTransport
 import me.rerere.rikkahub.data.ai.mcp.transport.StreamableHttpClientTransport
 import me.rerere.rikkahub.data.datastore.SettingsStore
-import me.rerere.rikkahub.data.event.AppEvent
-import me.rerere.rikkahub.data.event.AppEventBus
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.files.saveUploadFromBytes
@@ -70,13 +61,14 @@ private const val MAX_RECONNECT_DELAY_MS = 30000L
 
 // OAuth 相关常量
 private const val TOKEN_REFRESH_LEEWAY_MS = 60_000L // 令牌到期前 60s 视为需要刷新
+private const val MCP_OAUTH_CALLBACK_PORT = 52_134
+private const val MCP_OAUTH_CALLBACK_PATH = "/oauth/callback"
 private val OAUTH_CALLBACK_TIMEOUT = 5.minutes
 
 class McpManager(
     private val settingsStore: SettingsStore,
     private val appScope: AppScope,
     private val filesManager: FilesManager,
-    private val appEventBus: AppEventBus,
 ) {
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -100,6 +92,10 @@ class McpManager(
     }
 
     private val oauthClient = McpOAuthClient(okHttpClient)
+    private val oauthLoopbackCallbackServer = McpOAuthLoopbackCallbackServer(
+        port = MCP_OAUTH_CALLBACK_PORT,
+        path = MCP_OAUTH_CALLBACK_PATH,
+    )
 
     private val clients: MutableMap<Uuid, Pair<McpServerConfig, Client>> = mutableMapOf()
     private val reconnectJobs: MutableMap<Uuid, Job> = mutableMapOf()
@@ -544,7 +540,6 @@ class McpManager(
             val serverUrl = config.serverUrl
             require(serverUrl.isNotBlank()) { "Server URL 为空，无法授权" }
 
-            // 1. 发现受保护资源 & 授权服务器元数据
             val prm = oauthClient.discoverProtectedResource(serverUrl)
             val issuer = prm.authorizationServers.firstOrNull()
                 ?: error("受保护资源未声明授权服务器")
@@ -553,108 +548,101 @@ class McpManager(
                 ?: error("授权服务器缺少 authorization_endpoint")
             val tokenEndpoint = asMeta.tokenEndpoint
                 ?: error("授权服务器缺少 token_endpoint")
-
-            // 2. 计算 scope
             val scope = config.commonOptions.oauth?.scope
                 ?: prm.scopesSupported?.joinToString(" ")
                 ?: asMeta.scopesSupported?.joinToString(" ")
 
-            // 3. 客户端注册 (复用已注册的 client_id)
-            val existing = config.commonOptions.oauth
-            var clientId = existing?.clientId
-            var clientSecret = existing?.clientSecret
-            if (clientId.isNullOrBlank()) {
-                val regEndpoint = asMeta.registrationEndpoint
-                    ?: error("授权服务器不支持动态注册，且未预配置 client_id")
-                val reg = oauthClient.registerClient(
-                    registrationEndpoint = regEndpoint,
-                    clientName = config.commonOptions.name,
-                    redirectUri = MCP_OAUTH_REDIRECT_URI,
-                    scope = scope,
-                )
-                clientId = reg.clientId
-                clientSecret = reg.clientSecret
-            }
-
-            // 4. PKCE + state；持久化中间状态(端点/clientId)以便后续刷新
             val pkce = oauthClient.generatePkce()
             val state = oauthClient.generateState()
             val resource = McpOAuthClient.canonicalResource(serverUrl)
-
-            persistOAuthState(
-                config.id,
-                (existing ?: McpOAuthState()).copy(
-                    enabled = true,
-                    clientId = clientId,
-                    clientSecret = clientSecret,
-                    authorizationEndpoint = authEndpoint,
-                    tokenEndpoint = tokenEndpoint,
-                    registrationEndpoint = asMeta.registrationEndpoint,
-                    scope = scope,
-                )
-            )
-
-            // 5. 打开浏览器授权
-            val authUrl = oauthClient.buildAuthorizationUrl(
-                authorizationEndpoint = authEndpoint,
-                clientId = clientId,
-                redirectUri = MCP_OAUTH_REDIRECT_URI,
-                pkce = pkce,
-                state = state,
-                scope = scope,
-                resource = resource,
-            )
-            // 6. 先建立回调订阅，再打开浏览器，避免快速回调在订阅生效前 emit 而丢失
-            //    (AppEventBus 的 SharedFlow replay=0，无订阅者时的事件不会补发)
-            val callback = coroutineScope {
-                val subscribed = CompletableDeferred<Unit>()
-                val awaitCallback = async {
-                    withTimeoutOrNull(OAUTH_CALLBACK_TIMEOUT) {
-                        appEventBus.events
-                            .onSubscription { subscribed.complete(Unit) }
-                            .filterIsInstance<AppEvent.McpOAuthCallback>()
-                            .first { it.state == state }
-                    }
+            val callbackSession = oauthLoopbackCallbackServer.openSession(state)
+            val redirectUri = oauthLoopbackCallbackServer.redirectUri()
+            McpOAuthCallbackService.start(context)
+            try {
+                val existing = config.commonOptions.oauth
+                // The old custom-scheme registration cannot be reused: OAuth servers bind client_id to redirect_uri.
+                val reuseClient = existing?.redirectUri == redirectUri && !existing.clientId.isNullOrBlank()
+                var clientId = existing?.clientId.takeIf { reuseClient }
+                var clientSecret = existing?.clientSecret.takeIf { reuseClient }
+                if (clientId.isNullOrBlank()) {
+                    val regEndpoint = asMeta.registrationEndpoint
+                        ?: error("授权服务器不支持动态注册，且未预配置 client_id")
+                    val reg = oauthClient.registerClient(
+                        registrationEndpoint = regEndpoint,
+                        clientName = config.commonOptions.name,
+                        redirectUri = redirectUri,
+                        scope = scope,
+                    )
+                    clientId = reg.clientId
+                    clientSecret = reg.clientSecret
                 }
-                subscribed.await() // 确保订阅已注册
+
+                persistOAuthState(
+                    config.id,
+                    (existing ?: McpOAuthState()).copy(
+                        enabled = true,
+                        clientId = clientId,
+                        clientSecret = clientSecret,
+                        authorizationEndpoint = authEndpoint,
+                        tokenEndpoint = tokenEndpoint,
+                        registrationEndpoint = asMeta.registrationEndpoint,
+                        redirectUri = redirectUri,
+                        scope = scope,
+                    )
+                )
+
+                val authUrl = oauthClient.buildAuthorizationUrl(
+                    authorizationEndpoint = authEndpoint,
+                    clientId = clientId,
+                    redirectUri = redirectUri,
+                    pkce = pkce,
+                    state = state,
+                    scope = scope,
+                    resource = resource,
+                )
                 withContext(Dispatchers.Main) { launchOAuthAuthorization(context, authUrl) }
-                awaitCallback.await()
-            } ?: error("OAuth 授权超时")
-            if (callback.error != null) error("授权失败: ${callback.error}")
-            val code = callback.code ?: error("授权失败: 未返回授权码")
 
-            // 7. 用授权码换取令牌
-            val token = oauthClient.exchangeCode(
-                tokenEndpoint = tokenEndpoint,
-                clientId = clientId,
-                clientSecret = clientSecret,
-                code = code,
-                codeVerifier = pkce.verifier,
-                redirectUri = MCP_OAUTH_REDIRECT_URI,
-                resource = resource,
-            )
+                val callback = callbackSession.await(OAUTH_CALLBACK_TIMEOUT)
+                    ?: error("OAuth 授权超时")
+                callback.error?.let { error(
+                    if (callback.errorDescription.isNullOrBlank()) "授权失败: $it"
+                    else "授权失败: $it (${callback.errorDescription})"
+                ) }
+                val code = callback.code ?: error("授权失败: 未返回授权码")
 
-            // 8. 持久化令牌
-            persistOAuthState(
-                config.id,
-                McpOAuthState(
-                    enabled = true,
+                val token = oauthClient.exchangeCode(
+                    tokenEndpoint = tokenEndpoint,
                     clientId = clientId,
                     clientSecret = clientSecret,
-                    authorizationEndpoint = authEndpoint,
-                    tokenEndpoint = tokenEndpoint,
-                    registrationEndpoint = asMeta.registrationEndpoint,
-                    scope = token.scope ?: scope,
-                    accessToken = token.accessToken,
-                    refreshToken = token.refreshToken,
-                    expiresAt = computeExpiry(token.expiresIn),
+                    code = code,
+                    codeVerifier = pkce.verifier,
+                    redirectUri = redirectUri,
+                    resource = resource,
                 )
-            )
+                persistOAuthState(
+                    config.id,
+                    McpOAuthState(
+                        enabled = true,
+                        clientId = clientId,
+                        clientSecret = clientSecret,
+                        authorizationEndpoint = authEndpoint,
+                        tokenEndpoint = tokenEndpoint,
+                        registrationEndpoint = asMeta.registrationEndpoint,
+                        redirectUri = redirectUri,
+                        scope = token.scope ?: scope,
+                        accessToken = token.accessToken,
+                        refreshToken = token.refreshToken,
+                        expiresAt = computeExpiry(token.expiresIn),
+                    )
+                )
 
-            // 9. 使用最新配置重新连接
-            val freshConfig = settingsStore.settingsFlow.value.mcpServers.find { it.id == config.id }
-                ?: config
-            addClient(freshConfig)
+                val freshConfig = settingsStore.settingsFlow.value.mcpServers.find { it.id == config.id }
+                    ?: config
+                addClient(freshConfig)
+            } finally {
+                callbackSession.close()
+                McpOAuthCallbackService.stop(context)
+            }
         }
 
     /** 清除某个 Server 的 OAuth 授权状态（登出）。 */
