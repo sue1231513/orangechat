@@ -9,6 +9,7 @@ package me.rerere.rikkahub.ui.pages.setting
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Image02
 import me.rerere.hugeicons.stroke.Delete01
+import me.rerere.hugeicons.stroke.Clean
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberModalBottomSheetState
 import me.rerere.rikkahub.ui.theme.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -67,7 +72,9 @@ import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.theme.CustomColors
 import org.koin.compose.koinInject
 import java.io.File
+import java.util.concurrent.TimeUnit
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingFilesPage(
     filesManager: FilesManager = koinInject(),
@@ -86,6 +93,8 @@ fun SettingFilesPage(
 
     var selectedFolder by remember { mutableStateOf(FileFolders.UPLOAD) }
     var pendingDelete by remember { mutableStateOf<ManagedFileEntity?>(null) }
+    var showFileCleanSheet by remember { mutableStateOf(false) }
+    var selectedFileCleanRange by remember { mutableStateOf(FileCleanRange.DAYS_7) }
     val files by filesManager.observe(selectedFolder).collectAsState(initial = emptyList())
 
         // 数据库清理
@@ -96,6 +105,33 @@ fun SettingFilesPage(
     var daysToKeep by remember { mutableIntStateOf(90) }
     var cleanableNodes by remember { mutableIntStateOf(-1) }  // -1 = 未加载
     val context = androidx.compose.ui.platform.LocalContext.current
+
+    if (showFileCleanSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFileCleanSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        ) {
+            FileCleanSheet(
+                selectedRange = selectedFileCleanRange,
+                onRangeSelected = { selectedFileCleanRange = it },
+                onClean = {
+                    showFileCleanSheet = false
+                    scope.launch {
+                        val days = selectedFileCleanRange.days
+                        val ok = if (days == null) {
+                            filesManager.deleteAll(selectedFolder)
+                        } else {
+                            filesManager.deleteOlderThan(
+                                folder = selectedFolder,
+                                cutoffMillis = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.toLong()),
+                            )
+                        }
+                        toaster.show(if (ok) "附件清理完成" else "部分附件清理失败")
+                    }
+                },
+            )
+        }
+    }
 
     if (pendingDelete != null) {
         val target = pendingDelete!!
@@ -273,6 +309,17 @@ fun SettingFilesPage(
             LargeFlexibleTopAppBar(
                 title = { Text(stringResource(R.string.setting_files_page_title)) },
                 navigationIcon = { BackButton() },
+                actions = {
+                    IconButton(
+                        onClick = { showFileCleanSheet = true },
+                        enabled = files.isNotEmpty(),
+                    ) {
+                        Icon(
+                            imageVector = HugeIcons.Clean,
+                            contentDescription = "清理附件",
+                        )
+                    }
+                },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors
             )
@@ -367,6 +414,57 @@ fun SettingFilesPage(
                     )
                 }
             }
+        }
+    }
+}
+
+private enum class FileCleanRange(val days: Int?) {
+    DAYS_7(7),
+    DAYS_14(14),
+    DAYS_30(30),
+    ALL(null),
+}
+
+@Composable
+private fun FileCleanSheet(
+    selectedRange: FileCleanRange,
+    onRangeSelected: (FileCleanRange) -> Unit,
+    onClean: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+    ) {
+        Text("清理附件", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "按上传时间清理当前文件夹中的附件；不会删除聊天消息。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+        )
+        FileCleanRange.entries.forEach { range ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = selectedRange == range,
+                    onClick = { onRangeSelected(range) },
+                )
+                Text(
+                    range.days?.let { "$it 天前的附件" } ?: "全部附件",
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        }
+        TextButton(
+            onClick = onClean,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("清理")
         }
     }
 }
