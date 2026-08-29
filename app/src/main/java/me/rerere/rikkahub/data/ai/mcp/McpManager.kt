@@ -68,6 +68,8 @@ private fun launchOAuthAuthorization(context: Context, authorizationUrl: String)
     intent.intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
     intent.launchUrl(context, authorizationUrl.toUri())
 }
+
+private const val TOKEN_REFRESH_LEEWAY_MS = 60_000L // 令牌到期前 60s 视为需要刷新
 private const val MCP_OAUTH_CALLBACK_PORT = 52_134
 private const val MCP_OAUTH_CALLBACK_PATH = "/oauth/callback"
 private val OAUTH_CALLBACK_TIMEOUT = 5.minutes
