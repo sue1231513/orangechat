@@ -9,6 +9,7 @@ package me.rerere.rikkahub.data.ai.mcp
 import android.content.Context
 import android.util.Log
 import androidx.core.net.toUri
+import androidx.browser.customtabs.CustomTabsIntent
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -60,7 +61,13 @@ private const val BASE_RECONNECT_DELAY_MS = 1000L
 private const val MAX_RECONNECT_DELAY_MS = 30000L
 
 // OAuth 相关常量
-private const val TOKEN_REFRESH_LEEWAY_MS = 60_000L // 令牌到期前 60s 视为需要刷新
+private fun launchOAuthAuthorization(context: Context, authorizationUrl: String) {
+    val intent = CustomTabsIntent.Builder()
+        .setShowTitle(true)
+        .build()
+    intent.intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    intent.launchUrl(context, authorizationUrl.toUri())
+}
 private const val MCP_OAUTH_CALLBACK_PORT = 52_134
 private const val MCP_OAUTH_CALLBACK_PATH = "/oauth/callback"
 private val OAUTH_CALLBACK_TIMEOUT = 5.minutes

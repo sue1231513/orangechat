@@ -359,6 +359,20 @@ class FilesManager(
         inserted
     }
 
+    suspend fun deleteAll(folder: String = FileFolders.UPLOAD): Boolean = withContext(Dispatchers.IO) {
+        val entities = repository.listByFolder(folder).first()
+        var success = true
+        entities.forEach { entity ->
+            val file = getFile(entity)
+            if (file.exists() && !runCatching { file.deleteRecursively() }.getOrDefault(false)) {
+                success = false
+            } else if (repository.deleteById(entity.id) == 0) {
+                success = false
+            }
+        }
+        success
+    }
+
     suspend fun deleteOlderThan(
         folder: String = FileFolders.UPLOAD,
         cutoffMillis: Long,
