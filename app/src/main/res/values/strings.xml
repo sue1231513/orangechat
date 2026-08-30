@@ -763,6 +763,8 @@
   <string name="setting_display_page_show_user_avatar_title">Show User Avatar</string>
   <string name="setting_display_page_show_assistant_avatar_desc">Whether to display AI avatar / model icon in chat messages</string>
   <string name="setting_display_page_show_assistant_avatar_title">Show AI Avatar</string>
+  <string name="setting_display_page_top_bar_avatar_desc">Show the current assistant avatar in the chat header</string>
+  <string name="setting_display_page_top_bar_avatar_title">Header Avatar</string>
   <string name="setting_display_page_timeline_rail_desc">With both avatars off, hang messages on a thin left rail with one node per turn</string>
   <string name="setting_display_page_timeline_rail_title">Left Timeline Rail</string>
   <string name="setting_display_page_skip_crop_image_desc">Skip crop interface after importing images or taking photos</string>

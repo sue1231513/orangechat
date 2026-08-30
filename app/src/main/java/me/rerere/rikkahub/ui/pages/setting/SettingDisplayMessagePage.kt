@@ -194,13 +194,13 @@ fun SettingDisplayMessagePage(vm: SettingVM = koinViewModel()) {
                         }
                     )
                     item(
-                        headlineContent = { Text(stringResource(R.string.setting_display_page_chat_list_model_icon_title)) },
-                        supportingContent = { Text(stringResource(R.string.setting_display_page_chat_list_model_icon_desc)) },
+                        headlineContent = { Text(stringResource(R.string.setting_display_page_top_bar_avatar_title)) },
+                        supportingContent = { Text(stringResource(R.string.setting_display_page_top_bar_avatar_desc)) },
                         trailingContent = {
                             Switch(
-                                checked = displaySetting.showModelIcon,
+                                checked = displaySetting.showTopBarAvatar,
                                 onCheckedChange = {
-                                    updateDisplaySetting(displaySetting.copy(showModelIcon = it))
+                                    updateDisplaySetting(displaySetting.copy(showTopBarAvatar = it))
                                 }
                             )
                         },

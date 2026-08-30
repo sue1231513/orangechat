@@ -676,10 +676,13 @@ data class DisplaySetting(
     /**
      * 是否显示 AI 侧头像 / 模型图标。
      * 关闭后消息改为挂在左侧一条细线上，每轮一个节点，避免行首失去对齐锚点。
+     * 合并了旧的 showModelIcon：两者本是同一件事，保留 showModelIcon 字段仅为兼容旧配置。
      */
     val showAssistantAvatar: Boolean = true,
     /** 头像全部关闭时，是否用左侧时间线（细线 + 每轮节点）代替。 */
     val useTimelineWhenNoAvatar: Boolean = true,
+    /** 是否在聊天页顶栏显示当前助手头像（整屏只此一个，参考 kimi-room 的页首头像）。 */
+    val showTopBarAvatar: Boolean = false,
     val showAssistantBubble: Boolean = false,
     /** 用户消息是否显示气泡背景；关闭后原生与 Telegram 布局都会真正绕开 BubbleSurface。 */
     val showUserBubble: Boolean = true,

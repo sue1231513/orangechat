@@ -714,6 +714,8 @@
   <string name="setting_display_page_show_user_avatar_title">显示用户头像</string>
   <string name="setting_display_page_show_assistant_avatar_desc">是否在聊天消息中显示 AI 头像 / 模型图标</string>
   <string name="setting_display_page_show_assistant_avatar_title">显示 AI 头像</string>
+  <string name="setting_display_page_top_bar_avatar_desc">在聊天页顶栏显示当前助手头像</string>
+  <string name="setting_display_page_top_bar_avatar_title">顶栏头像</string>
   <string name="setting_display_page_timeline_rail_desc">两侧头像都关闭时，消息挂在左侧一条细线上，每轮一个节点</string>
   <string name="setting_display_page_timeline_rail_title">左侧时间线</string>
   <string name="setting_display_page_skip_crop_image_desc">导入图片或拍照后跳过裁剪界面</string>

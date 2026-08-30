@@ -42,7 +42,7 @@ import me.rerere.rikkahub.utils.toLocalString
 import java.io.File
 
 @Composable
-private fun AvatarFrameOverlay(
+internal fun AvatarFrameOverlay(
     framePath: String,
     offsetX: Float,
     offsetY: Float,
@@ -131,7 +131,7 @@ fun ChatMessageAssistantAvatar(
     modifier: Modifier = Modifier,
 ) {
     val settings = LocalSettings.current
-    val showIcon = settings.displaySetting.showModelIcon && settings.displaySetting.showAssistantAvatar
+    val showIcon = settings.displaySetting.showAssistantAvatar
     val useAssistantAvatar = assistant?.useAssistantAvatar == true
     if (message.role == MessageRole.ASSISTANT && (model != null || useAssistantAvatar)) {
         Row(
