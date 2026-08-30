@@ -295,10 +295,11 @@ fun ChatMessage(
     val navController = LocalNavController.current
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
-    // 两侧头像都关闭时，用左侧时间线补回纵向对齐锚点（参考 kimi-room 的做法）
+    // 逐条头像都不显示时，用左侧时间线补回纵向对齐锚点（参考 kimi-room 的做法）
+    // 顶栏头像接管的情况也算，此时列表里同样没有头像可作锚点
     val useTimeline = settings.useTimelineWhenNoAvatar &&
-        !settings.showUserAvatar &&
-        !settings.showAssistantAvatar
+        !settings.effectiveShowUserAvatar &&
+        !settings.effectiveShowAssistantAvatar
     MessageTimelineRailIfNeeded(
         enabled = useTimeline,
         role = message.role,

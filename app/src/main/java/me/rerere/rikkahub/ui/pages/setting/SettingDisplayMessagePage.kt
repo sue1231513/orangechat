@@ -110,31 +110,46 @@ fun SettingDisplayMessagePage(vm: SettingVM = koinViewModel()) {
                     title = { Text(stringResource(R.string.setting_page_message_display_settings)) },
                 ) {
                     item(
-                        headlineContent = { Text(stringResource(R.string.setting_display_page_show_user_avatar_title)) },
-                        supportingContent = { Text(stringResource(R.string.setting_display_page_show_user_avatar_desc)) },
+                        headlineContent = { Text(stringResource(R.string.setting_display_page_top_bar_avatar_title)) },
+                        supportingContent = { Text(stringResource(R.string.setting_display_page_top_bar_avatar_desc)) },
                         trailingContent = {
                             Switch(
-                                checked = displaySetting.showUserAvatar,
+                                checked = displaySetting.showTopBarAvatar,
                                 onCheckedChange = {
-                                    updateDisplaySetting(displaySetting.copy(showUserAvatar = it))
+                                    updateDisplaySetting(displaySetting.copy(showTopBarAvatar = it))
                                 }
                             )
                         },
                     )
-                    item(
-                        headlineContent = { Text(stringResource(R.string.setting_display_page_show_assistant_avatar_title)) },
-                        supportingContent = { Text(stringResource(R.string.setting_display_page_show_assistant_avatar_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = displaySetting.showAssistantAvatar,
-                                onCheckedChange = {
-                                    updateDisplaySetting(displaySetting.copy(showAssistantAvatar = it))
-                                }
-                            )
-                        },
-                    )
-                    // 仅在两侧头像都关掉时才有意义，其余情况隐藏，避免出现点了没反应的开关
-                    if (!displaySetting.showUserAvatar && !displaySetting.showAssistantAvatar) {
+                    // 顶栏头像接管后，逐条头像不再显示，这两个开关点了没有效果，直接隐藏
+                    if (!displaySetting.showTopBarAvatar) {
+                        item(
+                            headlineContent = { Text(stringResource(R.string.setting_display_page_show_user_avatar_title)) },
+                            supportingContent = { Text(stringResource(R.string.setting_display_page_show_user_avatar_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = displaySetting.showUserAvatar,
+                                    onCheckedChange = {
+                                        updateDisplaySetting(displaySetting.copy(showUserAvatar = it))
+                                    }
+                                )
+                            },
+                        )
+                        item(
+                            headlineContent = { Text(stringResource(R.string.setting_display_page_show_assistant_avatar_title)) },
+                            supportingContent = { Text(stringResource(R.string.setting_display_page_show_assistant_avatar_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = displaySetting.showAssistantAvatar,
+                                    onCheckedChange = {
+                                        updateDisplaySetting(displaySetting.copy(showAssistantAvatar = it))
+                                    }
+                                )
+                            },
+                        )
+                    }
+                    // 列表里没有头像可作锚点时才有意义（含顶栏接管的情况）
+                    if (!displaySetting.effectiveShowUserAvatar && !displaySetting.effectiveShowAssistantAvatar) {
                         item(
                             headlineContent = { Text(stringResource(R.string.setting_display_page_timeline_rail_title)) },
                             supportingContent = { Text(stringResource(R.string.setting_display_page_timeline_rail_desc)) },
@@ -192,18 +207,6 @@ fun SettingDisplayMessagePage(vm: SettingVM = koinViewModel()) {
                                 }
                             )
                         }
-                    )
-                    item(
-                        headlineContent = { Text(stringResource(R.string.setting_display_page_top_bar_avatar_title)) },
-                        supportingContent = { Text(stringResource(R.string.setting_display_page_top_bar_avatar_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = displaySetting.showTopBarAvatar,
-                                onCheckedChange = {
-                                    updateDisplaySetting(displaySetting.copy(showTopBarAvatar = it))
-                                }
-                            )
-                        },
                     )
                     item(
                         headlineContent = { Text(stringResource(R.string.setting_display_page_show_model_name_title)) },

@@ -931,7 +931,7 @@ private fun TopBar(
                             style = MaterialTheme.typography.bodyMedium,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        if (model != null && provider != null) {
+                        if (model != null && provider != null && !settings.displaySetting.showTopBarAvatar) {
                             Text(
                                 text = "${assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) }} / ${model.displayName} (${provider.name})",
                                 overflow = TextOverflow.Ellipsis,
@@ -1010,5 +1010,6 @@ private fun TopBar(
     }
 }
 // 顶栏双头像尺寸与交叠量（助手在前、用户在后略微压住）
-private val TOP_BAR_AVATAR_SIZE = 30.dp
-private val TOP_BAR_AVATAR_OVERLAP = 10.dp
+// 顶栏横向空间紧，尺寸偏小、交叠偏多，给标题留位置
+private val TOP_BAR_AVATAR_SIZE = 26.dp
+private val TOP_BAR_AVATAR_OVERLAP = 11.dp

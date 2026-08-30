@@ -766,7 +766,19 @@ data class DisplaySetting(
     val bubbleImageOverlayEnabled: Boolean = false, // 关=纯图片, 开=图片+主题色遮罩
     // 发送音效（自定义 mp3 路径，空 = 不播放）
     val sendSoundPath: String = "",
-)
+) {
+    /**
+     * 顶栏头像开启后，逐条消息头像不再显示。
+     *
+     * 两处同时挂头像会把标题挤成省略号，而顶栏那一个已经表明了当前是谁，
+     * 所以顶栏接管时列表里让位，不需要用户再手动关另外两个开关。
+     */
+    val effectiveShowUserAvatar: Boolean
+        get() = showUserAvatar && !showTopBarAvatar
+
+    val effectiveShowAssistantAvatar: Boolean
+        get() = showAssistantAvatar && !showTopBarAvatar
+}
 
 @Serializable
 data class WebDavConfig(
