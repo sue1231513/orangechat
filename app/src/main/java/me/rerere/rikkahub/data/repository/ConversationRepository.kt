@@ -354,6 +354,9 @@ class ConversationRepository(
                 conversationDAO.delete(
                     conversationToConversationEntity(conversation)
                 )
+                // favorites 表不是 conversation 的外键子表，需要显式清理，
+                // 否则会留下打不开也难删除的孤儿收藏
+                favoriteDAO.deleteNodeFavoritesOfConversation(conversation.id.toString())
             }
             filesManager.deleteChatFiles(fullConversation.files)
         } catch (e: Exception) {

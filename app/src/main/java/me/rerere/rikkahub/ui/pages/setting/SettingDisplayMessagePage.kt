@@ -122,6 +122,33 @@ fun SettingDisplayMessagePage(vm: SettingVM = koinViewModel()) {
                         },
                     )
                     item(
+                        headlineContent = { Text(stringResource(R.string.setting_display_page_show_assistant_avatar_title)) },
+                        supportingContent = { Text(stringResource(R.string.setting_display_page_show_assistant_avatar_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = displaySetting.showAssistantAvatar,
+                                onCheckedChange = {
+                                    updateDisplaySetting(displaySetting.copy(showAssistantAvatar = it))
+                                }
+                            )
+                        },
+                    )
+                    // 仅在两侧头像都关掉时才有意义，其余情况隐藏，避免出现点了没反应的开关
+                    if (!displaySetting.showUserAvatar && !displaySetting.showAssistantAvatar) {
+                        item(
+                            headlineContent = { Text(stringResource(R.string.setting_display_page_timeline_rail_title)) },
+                            supportingContent = { Text(stringResource(R.string.setting_display_page_timeline_rail_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = displaySetting.useTimelineWhenNoAvatar,
+                                    onCheckedChange = {
+                                        updateDisplaySetting(displaySetting.copy(useTimelineWhenNoAvatar = it))
+                                    }
+                                )
+                            },
+                        )
+                    }
+                    item(
                         headlineContent = { Text(stringResource(R.string.setting_display_page_show_user_bubble_title)) },
                         supportingContent = { Text(stringResource(R.string.setting_display_page_show_user_bubble_desc)) },
                         trailingContent = {

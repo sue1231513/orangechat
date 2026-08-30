@@ -295,6 +295,14 @@ fun ChatMessage(
     val navController = LocalNavController.current
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
+    // 两侧头像都关闭时，用左侧时间线补回纵向对齐锚点（参考 kimi-room 的做法）
+    val useTimeline = settings.useTimelineWhenNoAvatar &&
+        !settings.showUserAvatar &&
+        !settings.showAssistantAvatar
+    MessageTimelineRailIfNeeded(
+        enabled = useTimeline,
+        role = message.role,
+    ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = if (message.role == MessageRole.USER) Alignment.End else Alignment.Start,
@@ -376,6 +384,7 @@ fun ChatMessage(
         ProvideTextStyle(textStyle) {
             ChatMessageNerdLine(message = message)
         }
+    }
     }
     if (showActionsSheet) {
         ChatMessageActionsSheet(

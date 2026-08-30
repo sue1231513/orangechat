@@ -435,6 +435,11 @@
   <string name="favorite_page_removed">Favorite removed</string>
   <string name="favorite_page_title">Favorites</string>
   <string name="favorite_page_untitled_conversation">Untitled Conversation</string>
+  <string name="favorite_page_invalid">Conversation deleted</string>
+  <string name="favorite_page_clean_invalid">Clear invalid</string>
+  <string name="favorite_page_cleaned">Cleared %1$d invalid favorites</string>
+  <string name="favorite_page_no_invalid">No invalid favorites</string>
+  <string name="favorite_page_invalid_open_blocked">This conversation is gone. Delete this favorite.</string>
   <string name="history_page_cancel">Cancel</string>
   <string name="history_page_conversation_deleted">Conversation deleted</string>
   <string name="history_page_delete">Delete</string>
@@ -756,6 +761,10 @@
   <string name="setting_display_page_show_updates_title">Show Updates</string>
   <string name="setting_display_page_show_user_avatar_desc">Whether to display user avatar in chat messages</string>
   <string name="setting_display_page_show_user_avatar_title">Show User Avatar</string>
+  <string name="setting_display_page_show_assistant_avatar_desc">Whether to display AI avatar / model icon in chat messages</string>
+  <string name="setting_display_page_show_assistant_avatar_title">Show AI Avatar</string>
+  <string name="setting_display_page_timeline_rail_desc">With both avatars off, hang messages on a thin left rail with one node per turn</string>
+  <string name="setting_display_page_timeline_rail_title">Left Timeline Rail</string>
   <string name="setting_display_page_skip_crop_image_desc">Skip crop interface after importing images or taking photos</string>
   <string name="setting_display_page_skip_crop_image_title">Skip Image Editing</string>
   <string name="setting_display_page_title">Display Settings</string>

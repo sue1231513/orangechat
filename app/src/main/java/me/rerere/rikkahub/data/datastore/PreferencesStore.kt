@@ -673,6 +673,13 @@ data class DisplaySetting(
     val userNickname: String = "",
     val useAppIconStyleLoadingIndicator: Boolean = true,
     val showUserAvatar: Boolean = true,
+    /**
+     * 是否显示 AI 侧头像 / 模型图标。
+     * 关闭后消息改为挂在左侧一条细线上，每轮一个节点，避免行首失去对齐锚点。
+     */
+    val showAssistantAvatar: Boolean = true,
+    /** 头像全部关闭时，是否用左侧时间线（细线 + 每轮节点）代替。 */
+    val useTimelineWhenNoAvatar: Boolean = true,
     val showAssistantBubble: Boolean = false,
     /** 用户消息是否显示气泡背景；关闭后原生与 Telegram 布局都会真正绕开 BubbleSurface。 */
     val showUserBubble: Boolean = true,

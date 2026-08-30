@@ -131,7 +131,7 @@ fun ChatMessageAssistantAvatar(
     modifier: Modifier = Modifier,
 ) {
     val settings = LocalSettings.current
-    val showIcon = settings.displaySetting.showModelIcon
+    val showIcon = settings.displaySetting.showModelIcon && settings.displaySetting.showAssistantAvatar
     val useAssistantAvatar = assistant?.useAssistantAvatar == true
     if (message.role == MessageRole.ASSISTANT && (model != null || useAssistantAvatar)) {
         Row(

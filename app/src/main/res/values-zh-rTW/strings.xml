@@ -386,6 +386,11 @@
   <string name="favorite_page_removed">已移除最愛</string>
   <string name="favorite_page_title">收藏</string>
   <string name="favorite_page_untitled_conversation">未命名對話</string>
+  <string name="favorite_page_invalid">原對話已刪除</string>
+  <string name="favorite_page_clean_invalid">清理失效收藏</string>
+  <string name="favorite_page_cleaned">已清理 %1$d 條失效收藏</string>
+  <string name="favorite_page_no_invalid">沒有失效收藏</string>
+  <string name="favorite_page_invalid_open_blocked">原對話已經不在了，刪掉這條收藏吧</string>
   <string name="history_page_cancel">取消</string>
   <string name="history_page_conversation_deleted">對話已刪除</string>
   <string name="history_page_delete">刪除</string>
@@ -696,6 +701,10 @@
   <string name="setting_display_page_show_updates_title">顯示更新</string>
   <string name="setting_display_page_show_user_avatar_desc">是否在聊天消息中顯示用戶頭像</string>
   <string name="setting_display_page_show_user_avatar_title">顯示用戶頭像</string>
+  <string name="setting_display_page_show_assistant_avatar_desc">是否在聊天訊息中顯示 AI 頭像 / 模型圖示</string>
+  <string name="setting_display_page_show_assistant_avatar_title">顯示 AI 頭像</string>
+  <string name="setting_display_page_timeline_rail_desc">兩側頭像都關閉時，訊息掛在左側一條細線上，每輪一個節點</string>
+  <string name="setting_display_page_timeline_rail_title">左側時間線</string>
   <string name="setting_display_page_skip_crop_image_desc">匯入圖片或拍照後跳過裁剪介面</string>
   <string name="setting_display_page_skip_crop_image_title">跳過圖片編輯</string>
   <string name="setting_display_page_title">顯示設定</string>

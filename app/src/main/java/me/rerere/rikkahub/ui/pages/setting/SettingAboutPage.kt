@@ -267,17 +267,6 @@ fun SettingAboutPage() {
                         )
                     }
                 }
-
-                item {
-                    Text(
-                        text = stringResource(R.string.about_page_derivation_notice),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp),
-                    )
-                }
             }
         }
     }

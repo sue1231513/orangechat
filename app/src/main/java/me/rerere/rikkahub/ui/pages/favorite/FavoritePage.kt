@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -77,6 +79,15 @@ fun FavoritePage(vm: FavoriteVM = koinViewModel()) {
     val favorites = vm.nodeFavorites.collectAsStateWithLifecycle().value
     val favoriteRemovedText = stringResource(R.string.favorite_page_removed)
     val undoText = stringResource(R.string.history_page_undo)
+    val invalidBlockedText = stringResource(R.string.favorite_page_invalid_open_blocked)
+    val noInvalidText = stringResource(R.string.favorite_page_no_invalid)
+    val cleanedTextTemplate = stringResource(R.string.favorite_page_cleaned)
+    val invalidCount = favorites.count { !it.conversationExists }
+
+    // 每次回到页面重新核对一次有效性：对话可能在别处被删掉了
+    LaunchedEffect(favorites.size) {
+        vm.refreshValidity()
+    }
 
     Scaffold(
         topBar = {
@@ -86,6 +97,27 @@ fun FavoritePage(vm: FavoriteVM = koinViewModel()) {
                 },
                 title = {
                     Text(stringResource(R.string.favorite_page_title))
+                },
+                actions = {
+                    // 失效收藏批量清理：只在真有失效项时出现
+                    if (invalidCount > 0) {
+                        IconButton(
+                            onClick = {
+                                vm.cleanInvalidFavorites { removed ->
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            if (removed > 0) cleanedTextTemplate.format(removed) else noInvalidText
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = HugeIcons.Delete01,
+                                contentDescription = stringResource(R.string.favorite_page_clean_invalid),
+                            )
+                        }
+                    }
                 },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
@@ -120,7 +152,14 @@ fun FavoritePage(vm: FavoriteVM = koinViewModel()) {
             items(favorites, key = { it.id }) { item ->
                 SwipeableFavoriteCard(
                     item = item,
-                    onClick = { navigateToChatPage(navController, item.conversationId, nodeId = item.nodeId) },
+                    onClick = {
+                        // 原对话已删除时不跳转，否则会落到一个空会话里
+                        if (item.conversationExists) {
+                            navigateToChatPage(navController, item.conversationId, nodeId = item.nodeId)
+                        } else {
+                            scope.launch { snackbarHostState.showSnackbar(invalidBlockedText) }
+                        }
+                    },
                     onDelete = {
                         scope.launch {
                             val entity = vm.getEntityByRefKey(item.refKey) ?: return@launch
@@ -182,6 +221,7 @@ private fun SwipeableFavoriteCard(
         FavoriteCard(
             item = item,
             onClick = onClick,
+            onDelete = onDelete,
         )
     }
 }
@@ -259,6 +299,7 @@ private fun FavoriteDeleteBackground(
 private fun FavoriteCard(
     item: NodeFavoriteListItem,
     onClick: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val materialMode = LocalMaterialMode.current
@@ -286,30 +327,57 @@ private fun FavoriteCard(
             shape = shape,
         )
 
-        SelectionContainer {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = item.conversationTitle.ifBlank { stringResource(R.string.favorite_page_untitled_conversation) },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                val dateText = Instant.ofEpochMilli(item.createdAt).toLocalDateTime()
-                Text(
-                    text = item.preview,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = dateText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 4.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            SelectionContainer(modifier = Modifier.weight(1f)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = item.conversationTitle.ifBlank { stringResource(R.string.favorite_page_untitled_conversation) },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    val dateText = Instant.ofEpochMilli(item.createdAt).toLocalDateTime()
+                    Text(
+                        text = item.preview,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = dateText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                        // 原对话已删除的收藏在这里明确标出，避免用户反复点击一个打不开的条目
+                        if (!item.conversationExists) {
+                            Text(
+                                text = stringResource(R.string.favorite_page_invalid),
+                                maxLines = 1,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 显式删除按钮：左滑手势在部分设备/布局下不易触发，这里提供确定入口
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = HugeIcons.Delete01,
+                    contentDescription = stringResource(R.string.assistant_page_remove),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
