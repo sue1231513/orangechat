@@ -821,6 +821,9 @@
   <string name="setting_page_mcp">MCP</string>
   <string name="setting_page_mcp_desc">配置MCP伺服器</string>
   <string name="setting_page_message_display_settings">訊息顯示</string>
+  <string name="setting_page_group_automation">自動化</string>
+  <string name="setting_page_group_capabilities">能力</string>
+  <string name="setting_page_group_channels">接入</string>
   <string name="setting_page_model_and_services">模型與服務</string>
   <string name="setting_page_no_share_app">找不到分享應用</string>
   <string name="setting_page_providers">提供商</string>

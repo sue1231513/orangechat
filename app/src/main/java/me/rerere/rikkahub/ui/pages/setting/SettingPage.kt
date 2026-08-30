@@ -243,6 +243,17 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                         supportingContent = { Text(stringResource(R.string.setting_page_providers_desc)) },
                         headlineContent = { Text(stringResource(R.string.setting_page_providers)) },
                     )
+                }
+            }
+
+            // 能力：给 AI 加装的本机与外部工具，默认折叠
+            item("capabilities") {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text(stringResource(R.string.setting_page_group_capabilities)) },
+                    collapsible = true,
+                    initiallyExpanded = false,
+                ) {
                     item(
                         onClick = { navController.navigate(Screen.SettingSearch) },
                         leadingContent = { Icon(HugeIcons.GlobalSearch, null) },
@@ -262,22 +273,33 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                         headlineContent = { Text(stringResource(R.string.setting_page_mcp)) },
                     )
                     item(
-                        onClick = { navController.navigate(Screen.SettingWeb) },
-                        leadingContent = { Icon(HugeIcons.ServerStack01, null) },
-                        supportingContent = { Text(stringResource(R.string.setting_page_web_server_desc)) },
-                        headlineContent = { Text(stringResource(R.string.setting_page_web_server)) },
-                    )
-                    item(
                         onClick = { navController.navigate(Screen.SettingSystemTools) },
                         leadingContent = { Icon(HugeIcons.SmartPhone01, null) },
                         supportingContent = { Text("位置、通知、日历、闹钟等系统工具") },
                         headlineContent = { Text("系统工具") },
                     )
                     item(
-                        onClick = { navController.navigate(Screen.SettingProactiveMessage) },
-                        leadingContent = { Icon(HugeIcons.WavingHand01, null) },
-                        supportingContent = { Text("AI 在设定间隔内主动发消息，有记忆有上下文") },
-                        headlineContent = { Text("主动消息") },
+                        onClick = { navController.navigate(Screen.Health) },
+                        leadingContent = { Icon(HugeIcons.Pulse01, null) },
+                        supportingContent = { Text("Gadgetbridge 健康数据查看") },
+                        headlineContent = { Text("健康数据") },
+                    )
+                }
+            }
+
+            // 接入：把 AI 暴露到外部渠道，默认折叠
+            item("channels") {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text(stringResource(R.string.setting_page_group_channels)) },
+                    collapsible = true,
+                    initiallyExpanded = false,
+                ) {
+                    item(
+                        onClick = { navController.navigate(Screen.SettingWeb) },
+                        leadingContent = { Icon(HugeIcons.ServerStack01, null) },
+                        supportingContent = { Text(stringResource(R.string.setting_page_web_server_desc)) },
+                        headlineContent = { Text(stringResource(R.string.setting_page_web_server)) },
                     )
                     item(
                         onClick = { navController.navigate(Screen.SettingWeixinBot) },
@@ -291,17 +313,28 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                         supportingContent = { Text("填 AppID/Secret，用 QQ 私聊跟 AI 对话") },
                         headlineContent = { Text("QQ Bot") },
                     )
+                }
+            }
+
+            // 自动化：让 AI 自己动起来，默认折叠
+            item("automation") {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text(stringResource(R.string.setting_page_group_automation)) },
+                    collapsible = true,
+                    initiallyExpanded = false,
+                ) {
+                    item(
+                        onClick = { navController.navigate(Screen.SettingProactiveMessage) },
+                        leadingContent = { Icon(HugeIcons.WavingHand01, null) },
+                        supportingContent = { Text("AI 在设定间隔内主动发消息，有记忆有上下文") },
+                        headlineContent = { Text("主动消息") },
+                    )
                     item(
                         onClick = { navController.navigate(Screen.Workflows) },
                         leadingContent = { Icon(HugeIcons.SmartPhone01, null) },
                         supportingContent = { Text("Tasker 风格自动化：触发器 + 条件 -> 执行动作，由 AI 编写") },
                         headlineContent = { Text("工作流") },
-                    )
-                    item(
-                        onClick = { navController.navigate(Screen.Health) },
-                        leadingContent = { Icon(HugeIcons.Pulse01, null) },
-                        supportingContent = { Text("Gadgetbridge 健康数据查看") },
-                        headlineContent = { Text("健康数据") },
                     )
                 }
             }
@@ -349,6 +382,8 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                 CardGroup(
                     modifier = Modifier.padding(horizontal = 8.dp),
                     title = { Text(stringResource(R.string.setting_page_about)) },
+                    collapsible = true,
+                    initiallyExpanded = false,
                 ) {
                     item(
                         onClick = { navController.navigate(Screen.SettingAbout) },

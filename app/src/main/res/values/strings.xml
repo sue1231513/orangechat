@@ -881,6 +881,9 @@
   <string name="setting_page_mcp">MCP</string>
   <string name="setting_page_mcp_desc">Configure MCP Servers</string>
   <string name="setting_page_message_display_settings">Message Display</string>
+  <string name="setting_page_group_automation">Automation</string>
+  <string name="setting_page_group_capabilities">Capabilities</string>
+  <string name="setting_page_group_channels">Channels</string>
   <string name="setting_page_model_and_services">Models &amp; Services</string>
   <string name="setting_page_no_share_app">No sharing app found</string>
   <string name="setting_page_providers">Providers</string>
