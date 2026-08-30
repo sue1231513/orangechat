@@ -201,10 +201,15 @@ private fun ASTNode.containsHtml(): Boolean {
     return children.any { it.containsHtml() }
 }
 
+// moodlet: <silent> 是自定义标签，Markdown 解析器不会产出 HTML_TAG 节点，
+// 需要显式识别，否则会走纯文本分支把整个标签原样渲染进气泡。
+private val MOODLET_TAG_REGEX = Regex("<\\s*silent(\\s|>|/)", RegexOption.IGNORE_CASE)
+
 private fun parseMarkdown(content: String): MarkdownParseResult {
     val preprocessed = preProcess(content)
     val astTree = parser.buildMarkdownTreeFromString(preprocessed)
-    return MarkdownParseResult(preprocessed, astTree, astTree.containsHtml())
+    val hasHtml = astTree.containsHtml() || MOODLET_TAG_REGEX.containsMatchIn(preprocessed)
+    return MarkdownParseResult(preprocessed, astTree, hasHtml)
 }
 
 @Composable

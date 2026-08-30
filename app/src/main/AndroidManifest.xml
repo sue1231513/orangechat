@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:tools="http://schemas.android.com/tools">
 
@@ -95,6 +95,14 @@
       android:showWhenLocked="true"
       android:turnScreenOn="true"
       android:theme="@style/Theme.Rikkahub" />
+    <service
+      android:name=".data.ai.mcp.McpOAuthCallbackService"
+      android:exported="false"
+      android:foregroundServiceType="specialUse">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="temporary MCP OAuth loopback callback listener" />
+    </service>
     <activity
       android:name=".RouteActivity"
       android:configChanges="keyboardHidden|orientation|screenSize"
@@ -139,22 +147,6 @@
 
         <data
           android:host="shortcut"
-          android:scheme="rikkahub" />
-      </intent-filter>
-    </activity>
-    <activity
-      android:name=".ui.activity.McpOAuthCallbackActivity"
-      android:exported="true"
-      android:launchMode="singleTask"
-      android:theme="@android:style/Theme.Translucent.NoTitleBar">
-      <intent-filter>
-        <action android:name="android.intent.action.VIEW" />
-
-        <category android:name="android.intent.category.DEFAULT" />
-        <category android:name="android.intent.category.BROWSABLE" />
-
-        <data
-          android:host="mcp-oauth-callback"
           android:scheme="rikkahub" />
       </intent-filter>
     </activity>

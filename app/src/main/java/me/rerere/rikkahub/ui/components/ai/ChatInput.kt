@@ -7,6 +7,7 @@
 package me.rerere.rikkahub.ui.components.ai
 
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,6 +18,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -70,7 +72,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -106,6 +111,7 @@ import me.rerere.hugeicons.stroke.Voice
 import me.rerere.hugeicons.stroke.Zap
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.ai.mcp.McpManager
+import me.rerere.rikkahub.data.datastore.DisplayMaterialMode
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
@@ -129,6 +135,9 @@ import me.rerere.rikkahub.ui.context.LocalQuickMessages
 import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.ChatInputState
+import me.rerere.rikkahub.ui.theme.LocalMaterialMode
+import me.rerere.rikkahub.ui.theme.materialModeBorderStroke
+import me.rerere.rikkahub.ui.theme.popupContainerColor
 import me.rerere.rikkahub.utils.SoundEffectPlayer
 import org.koin.compose.koinInject
 import java.io.File
@@ -163,6 +172,12 @@ fun ChatInput(
     val toaster = LocalToaster.current
     val assistant = settings.getCurrentAssistant()
     val hazeTintColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val materialMode = LocalMaterialMode.current
+    val useRealtimeBlur = settings.displaySetting.enableBlurEffect &&
+        materialMode == DisplayMaterialMode.GLASS &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val useMaterialBorder = materialMode == DisplayMaterialMode.TRANSLUCENT ||
+        materialMode == DisplayMaterialMode.GLASS
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -486,6 +501,65 @@ fun ChatInput(
             android.graphics.BitmapFactory.decodeFile(inputBgPath)?.asImageBitmap()
         } else null
     }
+    val inputContainerColor = when {
+        inputBgBitmap != null || useRealtimeBlur -> Color.Transparent
+        else -> {
+            val baseColor = settings.displaySetting.inputFieldColor?.let { it.toComposeColor() } ?: hazeTintColor
+            when (materialMode) {
+                DisplayMaterialMode.TRANSLUCENT -> baseColor.copy(alpha = 0.78f)
+                DisplayMaterialMode.GLASS -> baseColor.copy(alpha = 0.56f)
+                DisplayMaterialMode.FOLLOW_THEME,
+                DisplayMaterialMode.FLAT -> baseColor
+            }
+        }
+    }
+    val inputContainerBorder = if (useMaterialBorder) {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f))
+    } else {
+        null
+    }
+    val useStaticGlass = materialMode == DisplayMaterialMode.GLASS &&
+        inputBgBitmap == null && !useRealtimeBlur
+    val glassSurfaceTint = MaterialTheme.colorScheme.surface
+    val glassHighlight = MaterialTheme.colorScheme.onSurface
+    val staticGlassModifier = if (useStaticGlass) {
+        Modifier.drawWithCache {
+            val topLayerHeight = minOf(size.height * 0.32f, 32.dp.toPx())
+            val highlightInset = 20.dp.toPx()
+            val highlightY = 0.75.dp.toPx()
+
+            onDrawBehind {
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            glassSurfaceTint.copy(alpha = 0.07f),
+                            glassSurfaceTint.copy(alpha = 0.025f),
+                            Color.Transparent,
+                        ),
+                        start = Offset.Zero,
+                        end = Offset(size.width * 0.62f, topLayerHeight),
+                    )
+                )
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            glassHighlight.copy(alpha = 0.04f),
+                            Color.Transparent,
+                        ),
+                        endY = topLayerHeight,
+                    )
+                )
+                drawLine(
+                    color = glassHighlight.copy(alpha = 0.14f),
+                    start = Offset(highlightInset, highlightY),
+                    end = Offset(size.width - highlightInset, highlightY),
+                    strokeWidth = 0.75.dp.toPx(),
+                )
+            }
+        }
+    } else {
+        Modifier
+    }
 
     Surface(
         color = Color.Transparent,
@@ -503,7 +577,7 @@ fun ChatInput(
                     .fillMaxWidth()
                     .clip(MaterialTheme.shapes.largeIncreased)
                     .then(
-                        if (settings.displaySetting.enableBlurEffect) Modifier.hazeEffect(
+                        if (useRealtimeBlur) Modifier.hazeEffect(
                             state = hazeState,
                             style = HazeMaterials.ultraThin(containerColor = hazeTintColor)
                         )
@@ -511,13 +585,11 @@ fun ChatInput(
                     ),
                 shape = MaterialTheme.shapes.largeIncreased,
                 tonalElevation = 0.dp,
-                // When background image is set, make surface transparent so image is visible
-                color = if (inputBgBitmap != null) Color.Transparent
-                    else if (settings.displaySetting.enableBlurEffect) Color.Transparent
-                    else settings.displaySetting.inputFieldColor?.let { it.toComposeColor() } ?: hazeTintColor,
+                color = inputContainerColor,
+                border = inputContainerBorder,
             ) {
                 // Use Box so background image can match parent size
-                Box {
+                Box(modifier = staticGlassModifier) {
                     // Background image inside input area (matches content size exactly)
                     if (inputBgBitmap != null) {
                         Image(
@@ -732,7 +804,7 @@ fun ChatInput(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(20.dp))
                             .then(
-                                if (settings.displaySetting.enableBlurEffect) Modifier.hazeEffect(
+                                if (useRealtimeBlur) Modifier.hazeEffect(
                                     state = hazeState,
                                     style = HazeMaterials.ultraThin()
                                 )
@@ -740,7 +812,11 @@ fun ChatInput(
                             ),
                         shape = RoundedCornerShape(20.dp),
                         tonalElevation = 0.dp,
-                        color = if (settings.displaySetting.enableBlurEffect) Color.Transparent else hazeTintColor,
+                        color = if (useRealtimeBlur) {
+                            Color.Transparent
+                        } else {
+                            popupContainerColor(hazeTintColor)
+                        },
                     ) {
                         FilesPicker(
                             conversation = conversation,
@@ -929,6 +1005,7 @@ private fun QuickMessageButton(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
+            border = materialModeBorderStroke(),
             modifier = Modifier
                 .widthIn(min = 200.dp)
                 .width(IntrinsicSize.Min)
@@ -986,7 +1063,8 @@ private fun FullScreenEditor(
             Surface(
                 modifier = Modifier
                     .widthIn(max = 800.dp),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                color = popupContainerColor(MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier

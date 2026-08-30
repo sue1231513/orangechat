@@ -1,0 +1,8 @@
+/* Pelle d'Umore — Emotional Skin for AI Chat | CC BY 4.0 — Attribution required | Created by Cu & Lunedì (cunedi.uk) */
+/* Copied for WebView preview mode support */
+
+body[data-mood="rage"] { --mood-bg: #0a0000; --mood-text: #ff6666; --mood-accent: #ff2222; }
+body[data-mood="rage2"] { --mood-bg: #ffcccc; --mood-text: #330000; --mood-accent: #cc0000; }
+body[data-mood="desire"] { --mood-bg: #1a0a0a; --mood-text: #ffcccc; --mood-accent: #ff6688; }
+body[data-mood="vuoto"] { --mood-bg: #1a1a1a; --mood-text: #888888; --mood-accent: #666666; }
+body[data-mood="moonlight"] { --mood-bg: #0a0a2a; --mood-text: #ccccff; --mood-accent: #ffd700; }

@@ -29,6 +29,9 @@ class FavoriteRepository(
 
     suspend fun deleteById(id: String): Int = dao.deleteById(id)
 
+    suspend fun deleteNodeFavoritesOfConversation(conversationId: Uuid): Int =
+        dao.deleteNodeFavoritesOfConversation(conversationId.toString())
+
     suspend fun upsert(entity: FavoriteEntity) = dao.upsert(entity)
 
     suspend fun addNodeFavorite(target: NodeFavoriteTarget): FavoriteEntity {

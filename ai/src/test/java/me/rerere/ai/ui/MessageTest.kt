@@ -181,6 +181,19 @@ class MessageTest {
         assertTrue(message.isValidToUpload())
     }
 
+    @Test
+    fun `isEmptyUIMessage should keep tool-only message visible`() {
+        val parts = listOf(
+            UIMessagePart.Tool(
+                toolCallId = "call-1",
+                toolName = "weather",
+                input = "{}"
+            )
+        )
+
+        assertFalse(parts.isEmptyUIMessage())
+    }
+
     // ==================== migrateToolMessages Tests ====================
 
     @Test

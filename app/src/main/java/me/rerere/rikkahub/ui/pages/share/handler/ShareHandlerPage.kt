@@ -1,10 +1,12 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
  */
 
 package me.rerere.rikkahub.ui.pages.share.handler
+
+import me.rerere.rikkahub.ui.pages.setting.settingsScaffoldContainerColor
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import me.rerere.rikkahub.ui.theme.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,6 +50,7 @@ fun ShareHandlerPage(text: String, image: String?) {
     val scope = rememberCoroutineScope()
     val navController = LocalNavController.current
     Scaffold(
+        containerColor = settingsScaffoldContainerColor(),
         topBar = {
             TopAppBar(
                 title = {

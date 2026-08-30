@@ -271,6 +271,8 @@ fun List<UIMessagePart>.isEmptyUIMessage(): Boolean {
             is UIMessagePart.Video -> message.url.isBlank()
             is UIMessagePart.Audio -> message.url.isBlank()
             is UIMessagePart.VoiceMessage -> message.url.isBlank()
+            // 工具调用本身就是可见内容，不能因没有文本而隐藏操作卡。
+            is UIMessagePart.Tool -> false
             else -> true
         }
     }

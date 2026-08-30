@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.LargeFlexibleTopAppBar
+import me.rerere.rikkahub.ui.theme.LargeFlexibleTopAppBar
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -45,10 +45,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.io.File
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.ChatFontFamily
+import me.rerere.rikkahub.data.datastore.ChatBubbleStyle
 import me.rerere.rikkahub.data.datastore.DisplaySetting
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.richtext.MarkdownBlock
 import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
@@ -94,7 +96,7 @@ fun SettingDisplayMessagePage(vm: SettingVM = koinViewModel()) {
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = CustomColors.topBarColors.containerColor
+        containerColor = settingsScaffoldContainerColor(CustomColors.topBarColors.containerColor)
     ) { contentPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -108,13 +110,67 @@ fun SettingDisplayMessagePage(vm: SettingVM = koinViewModel()) {
                     title = { Text(stringResource(R.string.setting_page_message_display_settings)) },
                 ) {
                     item(
-                        headlineContent = { Text(stringResource(R.string.setting_display_page_show_user_avatar_title)) },
-                        supportingContent = { Text(stringResource(R.string.setting_display_page_show_user_avatar_desc)) },
+                        headlineContent = { Text(stringResource(R.string.setting_display_page_top_bar_avatar_title)) },
+                        supportingContent = { Text(stringResource(R.string.setting_display_page_top_bar_avatar_desc)) },
                         trailingContent = {
                             Switch(
-                                checked = displaySetting.showUserAvatar,
+                                checked = displaySetting.showTopBarAvatar,
                                 onCheckedChange = {
-                                    updateDisplaySetting(displaySetting.copy(showUserAvatar = it))
+                                    updateDisplaySetting(displaySetting.copy(showTopBarAvatar = it))
+                                }
+                            )
+                        },
+                    )
+                    // 顶栏头像接管后，逐条头像不再显示，这两个开关点了没有效果，直接隐藏
+                    if (!displaySetting.showTopBarAvatar) {
+                        item(
+                            headlineContent = { Text(stringResource(R.string.setting_display_page_show_user_avatar_title)) },
+                            supportingContent = { Text(stringResource(R.string.setting_display_page_show_user_avatar_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = displaySetting.showUserAvatar,
+                                    onCheckedChange = {
+                                        updateDisplaySetting(displaySetting.copy(showUserAvatar = it))
+                                    }
+                                )
+                            },
+                        )
+                        item(
+                            headlineContent = { Text(stringResource(R.string.setting_display_page_show_assistant_avatar_title)) },
+                            supportingContent = { Text(stringResource(R.string.setting_display_page_show_assistant_avatar_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = displaySetting.showAssistantAvatar,
+                                    onCheckedChange = {
+                                        updateDisplaySetting(displaySetting.copy(showAssistantAvatar = it))
+                                    }
+                                )
+                            },
+                        )
+                    }
+                    // 列表里没有头像可作锚点时才有意义（含顶栏接管的情况）
+                    if (!displaySetting.effectiveShowUserAvatar && !displaySetting.effectiveShowAssistantAvatar) {
+                        item(
+                            headlineContent = { Text(stringResource(R.string.setting_display_page_timeline_rail_title)) },
+                            supportingContent = { Text(stringResource(R.string.setting_display_page_timeline_rail_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = displaySetting.useTimelineWhenNoAvatar,
+                                    onCheckedChange = {
+                                        updateDisplaySetting(displaySetting.copy(useTimelineWhenNoAvatar = it))
+                                    }
+                                )
+                            },
+                        )
+                    }
+                    item(
+                        headlineContent = { Text(stringResource(R.string.setting_display_page_show_user_bubble_title)) },
+                        supportingContent = { Text(stringResource(R.string.setting_display_page_show_user_bubble_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = displaySetting.showUserBubble,
+                                onCheckedChange = {
+                                    updateDisplaySetting(displaySetting.copy(showUserBubble = it))
                                 }
                             )
                         },
@@ -132,16 +188,25 @@ fun SettingDisplayMessagePage(vm: SettingVM = koinViewModel()) {
                         },
                     )
                     item(
-                        headlineContent = { Text(stringResource(R.string.setting_display_page_chat_list_model_icon_title)) },
-                        supportingContent = { Text(stringResource(R.string.setting_display_page_chat_list_model_icon_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = displaySetting.showModelIcon,
-                                onCheckedChange = {
-                                    updateDisplaySetting(displaySetting.copy(showModelIcon = it))
+                        headlineContent = { Text("消息气泡样式") },
+                        supportingContent = {
+                            Select(
+                                options = ChatBubbleStyle.entries,
+                                selectedOption = displaySetting.chatBubbleStyle,
+                                onOptionSelected = { style ->
+                                    updateDisplaySetting(displaySetting.copy(chatBubbleStyle = style))
+                                },
+                                modifier = Modifier
+                                    .padding(top = 4.dp)
+                                    .fillMaxWidth(),
+                                optionToString = { style ->
+                                    when (style) {
+                                        ChatBubbleStyle.RIKKA -> "Rikka 原生"
+                                        ChatBubbleStyle.TELEGRAM -> "Telegram（时间与双勾）"
+                                    }
                                 }
                             )
-                        },
+                        }
                     )
                     item(
                         headlineContent = { Text(stringResource(R.string.setting_display_page_show_model_name_title)) },

@@ -62,8 +62,24 @@ interface MessageNodeDAO {
     @Update
     suspend fun update(node: MessageNodeEntity)
 
-    @Query("DELETE FROM message_node WHERE conversation_id = :conversationId")
-    suspend fun deleteByConversation(conversationId: String)
+    /**
+     * 清理超旧对话的消息节点（保留 N 天内）
+     * 返回清理掉的对话数
+     */
+    @Query("DELETE FROM message_node WHERE conversation_id IN (SELECT id FROM conversationentity WHERE update_at < :cutoffMillis)")
+    suspend fun deleteOldConversationNodes(cutoffMillis: Long): Int
+
+    /**
+     * 清理超旧对话的记录本身（保留 N 天内）
+     */
+    @Query("DELETE FROM conversationentity WHERE update_at < :cutoffMillis")
+    suspend fun deleteOldConversations(cutoffMillis: Long): Int
+
+    /**
+     * 统计超旧对话的 node 行数（用于展示可清理量）
+     */
+    @Query("SELECT COUNT(*) FROM message_node WHERE conversation_id IN (SELECT id FROM conversationentity WHERE update_at < :cutoffMillis)")
+    suspend fun countOldConversationNodes(cutoffMillis: Long): Int
 
     @Query("DELETE FROM message_node WHERE id = :nodeId")
     suspend fun deleteById(nodeId: String)

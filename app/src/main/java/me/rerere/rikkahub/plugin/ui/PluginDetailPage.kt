@@ -1,10 +1,12 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
  */
 
 package me.rerere.rikkahub.plugin.ui
+
+import me.rerere.rikkahub.ui.pages.setting.settingsScaffoldContainerColor
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import me.rerere.rikkahub.ui.theme.materialModeBorderStroke
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -36,7 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import me.rerere.rikkahub.ui.theme.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -112,6 +115,7 @@ fun PluginDetailPage(
     val folders by viewModel.folders.collectAsState()
 
     Scaffold(
+        containerColor = settingsScaffoldContainerColor(),
         topBar = {
             TopAppBar(
                 title = { Text("插件详情") },
@@ -272,7 +276,8 @@ private fun FolderSelector(
         )
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            border = materialModeBorderStroke(),
         ) {
             DropdownMenuItem(
                 text = { Text("未分组") },

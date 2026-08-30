@@ -121,6 +121,12 @@ interface MemoryBankDAO {
     suspend fun getVectorizedMemoriesByAssistant(assistantId: String): List<MemoryBankEntity>
 
     /** 更新指定记录的 embedding 和 vector_status */
+    @Query("UPDATE memory_bank SET embedding = NULL WHERE embedding IS NOT NULL")
+    suspend fun clearAllEmbeddings()
+
+    @Query("UPDATE memory_bank SET vector_status = 'skipped' WHERE vector_status != 'skipped'")
+    suspend fun markAllVectorStatusSkipped()
+
     @Query("UPDATE memory_bank SET embedding = :embedding, vector_status = :status WHERE id = :id")
     suspend fun updateEmbedding(id: Int, embedding: String, status: String)
 }

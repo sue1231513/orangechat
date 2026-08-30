@@ -7,6 +7,7 @@
 package me.rerere.rikkahub.ui.components.ui
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,7 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -54,6 +57,8 @@ import me.rerere.hugeicons.stroke.ArrowUp01
 import me.rerere.hugeicons.stroke.Search01
 import me.rerere.hugeicons.stroke.Sparkles
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.data.datastore.DisplayMaterialMode
+import me.rerere.rikkahub.ui.theme.LocalMaterialMode
 
 private val LocalCardColor = staticCompositionLocalOf { Color.White }
 
@@ -85,6 +90,15 @@ fun <T> ChainOfThought(
 ) {
     val settings = LocalSettings.current
     val thinkingAlpha = 1f - settings.displaySetting.thinkingChainTransparency / 100f
+    val materialMode = LocalMaterialMode.current
+    val useTranslucentSurface = materialMode == DisplayMaterialMode.TRANSLUCENT ||
+        materialMode == DisplayMaterialMode.GLASS
+    val materialBaseAlpha = when (materialMode) {
+        DisplayMaterialMode.TRANSLUCENT -> TRANSLUCENT_THINKING_BASE_ALPHA
+        DisplayMaterialMode.GLASS -> GLASS_THINKING_BASE_ALPHA
+        DisplayMaterialMode.FOLLOW_THEME,
+        DisplayMaterialMode.FLAT -> 1f
+    }
 
     var expanded by remember { mutableStateOf(false) }
     val canCollapse = steps.size > collapsedVisibleCount
@@ -92,11 +106,58 @@ fun <T> ChainOfThought(
 
     val thinkingBubbleColor = settings.displaySetting.thinkingBubbleColor?.let { it.toComposeColor() }
     val effectiveCardColors = CardDefaults.cardColors(
-        containerColor = (thinkingBubbleColor ?: cardColors.containerColor).copy(alpha = thinkingAlpha),
+        containerColor = (thinkingBubbleColor ?: cardColors.containerColor).copy(
+            alpha = materialBaseAlpha * thinkingAlpha
+        ),
         contentColor = cardColors.contentColor,
         disabledContainerColor = cardColors.disabledContainerColor,
         disabledContentColor = cardColors.disabledContentColor,
     )
+    val border = if (useTranslucentSurface) {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = THINKING_BORDER_ALPHA))
+    } else {
+        null
+    }
+    val glassSurfaceTint = MaterialTheme.colorScheme.surface
+    val glassHighlight = MaterialTheme.colorScheme.onSurface
+    val glassModifier = if (materialMode == DisplayMaterialMode.GLASS) {
+        Modifier.drawWithCache {
+            val topGlowHeight = size.height * 0.24f
+            val highlightInset = 14.dp.toPx()
+            val highlightY = 0.75.dp.toPx()
+
+            onDrawBehind {
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            glassSurfaceTint.copy(alpha = 0.075f * thinkingAlpha),
+                            glassSurfaceTint.copy(alpha = 0.025f * thinkingAlpha),
+                            Color.Transparent,
+                        ),
+                        start = Offset.Zero,
+                        end = Offset(size.width, size.height),
+                    )
+                )
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            glassHighlight.copy(alpha = 0.045f * thinkingAlpha),
+                            Color.Transparent,
+                        ),
+                        endY = topGlowHeight,
+                    )
+                )
+                drawLine(
+                    color = glassHighlight.copy(alpha = 0.16f * thinkingAlpha),
+                    start = Offset(highlightInset, highlightY),
+                    end = Offset(size.width - highlightInset, highlightY),
+                    strokeWidth = 0.75.dp.toPx(),
+                )
+            }
+        }
+    } else {
+        Modifier
+    }
 
     CompositionLocalProvider(
         LocalCardColor provides cardColors.containerColor
@@ -105,9 +166,11 @@ fun <T> ChainOfThought(
             modifier = modifier,
             colors = effectiveCardColors,
             shape = RoundedCornerShape(16.dp),
+            border = border,
         ) {
             Column(
                 modifier = Modifier
+                    .then(glassModifier)
                     .padding(horizontal = 12.dp, vertical = 4.dp)
                     .animateContentSize(
                         animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()
@@ -189,6 +252,10 @@ fun <T> ChainOfThought(
         }
     }
 }
+
+private const val TRANSLUCENT_THINKING_BASE_ALPHA = 0.78f
+private const val GLASS_THINKING_BASE_ALPHA = 0.56f
+private const val THINKING_BORDER_ALPHA = 0.18f
 
 /**
  * [ChainOfThought] 内部使用的步骤渲染作用域。

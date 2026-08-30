@@ -41,4 +41,13 @@ interface FavoriteDAO {
 
     @Query("DELETE FROM favorites WHERE id = :id")
     suspend fun deleteById(id: String): Int
+
+    /**
+     * 删除某个对话下的全部节点收藏。
+     *
+     * 对话被删除后，node 收藏只剩一个指向空会话的 refKey：
+     * 既打不开也不容易在列表里删掉，因此在删除对话时一并清理。
+     */
+    @Query("DELETE FROM favorites WHERE ref_key LIKE 'node:' || :conversationId || ':%'")
+    suspend fun deleteNodeFavoritesOfConversation(conversationId: String): Int
 }

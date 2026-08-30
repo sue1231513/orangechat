@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.datetime.toJavaLocalDateTime
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.provider.Model
@@ -59,6 +62,7 @@ import me.rerere.hugeicons.stroke.StopCircle
 import me.rerere.hugeicons.stroke.TextSelection
 import me.rerere.hugeicons.stroke.Translate
 import me.rerere.hugeicons.stroke.VolumeHigh
+import me.rerere.hugeicons.stroke.Voice
 import me.rerere.hugeicons.stroke.WebDesign01
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.model.MessageNode
@@ -67,6 +71,7 @@ import me.rerere.rikkahub.ui.context.LocalDisplaySettings
 import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.utils.copyMessageToClipboard
 import me.rerere.rikkahub.utils.extractQuotedContentAsText
+import me.rerere.rikkahub.utils.stripTtsInternalMarkup
 import me.rerere.rikkahub.utils.toLocalString
 import java.util.Locale
 
@@ -84,6 +89,8 @@ fun ColumnScope.ChatMessageActionButtons(
     var isPendingDelete by remember { mutableStateOf(false) }
     var showTranslateDialog by remember { mutableStateOf(false) }
     var showRegenerateConfirm by remember { mutableStateOf(false) }
+    var isGeneratingVoice by remember(message.id) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(isPendingDelete) {
         if (isPendingDelete) {
@@ -138,7 +145,7 @@ fun ColumnScope.ChatMessageActionButtons(
                         indication = LocalIndication.current,
                         onClick = {
                             if (!isSpeaking) {
-                                val text = message.toText()
+                                val text = message.toText().stripTtsInternalMarkup()
                                 val textToSpeak = if (displaySettings.ttsOnlyReadQuoted) {
                                     text.extractQuotedContentAsText() ?: text
                                 } else {
@@ -154,6 +161,49 @@ fun ColumnScope.ChatMessageActionButtons(
                     .size(16.dp),
                 tint = if (isAvailable) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
             )
+
+            // 手动生成并持久化的语音条：只允许助手消息，已有条目时不再显示，避免重复扣费。
+            val hasVoiceMessage = message.parts.any { it is UIMessagePart.VoiceMessage }
+            if (!hasVoiceMessage) {
+                if (isGeneratingVoice) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(6.dp).size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Icon(
+                        imageVector = HugeIcons.Voice,
+                        contentDescription = "Generate voice message",
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable(enabled = isAvailable) {
+                                val source = message.toText().stripTtsInternalMarkup()
+                                if (source.isBlank()) return@clickable
+                                isGeneratingVoice = true
+                                scope.launch {
+                                    val voice = tts.createVoiceMessage(source)
+                                    if (voice != null) {
+                                        onUpdate(
+                                            node.copy(
+                                                messages = node.messages.map { candidate ->
+                                                    if (candidate.id == message.id) {
+                                                        candidate.copy(parts = candidate.parts + voice)
+                                                    } else {
+                                                        candidate
+                                                    }
+                                                }
+                                            )
+                                        )
+                                    }
+                                    isGeneratingVoice = false
+                                }
+                            }
+                            .padding(8.dp)
+                            .size(16.dp),
+                        tint = if (isAvailable) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f),
+                    )
+                }
+            }
 
             // Translation button
             if (onTranslate != null) {

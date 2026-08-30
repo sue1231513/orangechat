@@ -47,6 +47,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.paint
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -162,16 +165,19 @@ import me.rerere.rikkahub.ui.pages.setting.SecuritySettingPage
 import me.rerere.rikkahub.ui.pages.setting.SettingProactiveMessagePage
 import me.rerere.rikkahub.ui.pages.setting.SettingWeixinBotPage
 import me.rerere.rikkahub.ui.pages.setting.SettingQqBotPage
+import me.rerere.rikkahub.ui.pages.setting.components.SettingsBackground
 import me.rerere.rikkahub.plugin.webview.PluginWebViewPage
 import me.rerere.rikkahub.ui.pages.memory.MemoryBankPage
 import me.rerere.rikkahub.ui.components.ui.EmojiPickerPage
 import me.rerere.rikkahub.ui.pages.share.handler.ShareHandlerPage
 import me.rerere.rikkahub.ui.pages.stats.StatsPage
 import me.rerere.rikkahub.ui.pages.translator.TranslatorPage
- import me.rerere.rikkahub.ui.pages.voice.IncomingCallPage
- import me.rerere.rikkahub.ui.pages.voice.VoiceCallPage
+import me.rerere.rikkahub.ui.pages.voice.IncomingCallPage
+import me.rerere.rikkahub.ui.pages.voice.VoiceCallPage
 import me.rerere.rikkahub.service.VoiceCallService
 import me.rerere.rikkahub.ui.pages.webview.WebViewPage
+import me.rerere.rikkahub.ui.theme.THEME_BACKGROUND_SCRIM
+import me.rerere.rikkahub.ui.theme.ScrimColors
 import me.rerere.rikkahub.ui.theme.LocalDarkMode
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
 import me.rerere.rikkahub.utils.CrashHandler
@@ -379,7 +385,6 @@ class RouteActivity : ComponentActivity() {
                 when (event) {
                     is AppEvent.Speak -> tts.speak(event.text)
                     is AppEvent.EmojiSelected -> { /* handled in UIAvatar */ }
-                    is AppEvent.McpOAuthCallback -> Unit // 由 McpManager 消费
                     is AppEvent.RequestVoiceCall -> {
                         val convId = event.conversationId
                         // 单通话守卫: 已有通话进行中就不重复弹
@@ -422,40 +427,129 @@ class RouteActivity : ComponentActivity() {
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
                         .let { base ->
-                            if (settings.themeId == "pearltide") {
-                                base.paint(
-                                    painter = painterResource(id = R.drawable.pearltide_chat_bg),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                base
+                            when (settings.themeId) {
+                                "pearltide" -> {
+                                    val scrim = THEME_BACKGROUND_SCRIM.getValue("pearltide")
+                                    val painted = base
+                                        .paint(
+                                            painter = painterResource(id = R.drawable.pearltide_chat_bg),
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                    // 以前 Pearl Tide 没有 dark 分支，深色模式仍套着浅色叶子图与白色 scrim。
+                                    // 保留同一张潮汐图的纹理，但改用深海蓝灰遮罩，让深色是真正的夜潮。
+                                    if (LocalDarkMode.current) {
+                                        painted
+                                            .background(Color(0xFF111820).copy(alpha = 0.64f))
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF26384B).copy(alpha = 0.42f),
+                                                        Color(0xFF141D28).copy(alpha = 0.72f),
+                                                    )
+                                                )
+                                            )
+                                    } else {
+                                        painted.background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color(scrim.top.toLong()),
+                                                    Color(scrim.accent.toLong()).copy(alpha = 0.15f),
+                                                    Color(scrim.bottom.toLong()).copy(alpha = 0.08f),
+                                                    Color(scrim.bottom.toLong()),
+                                                )
+                                            )
+                                        )
+                                    }
+                                }
+
+                                "harbor" -> {
+                                    val scrim = THEME_BACKGROUND_SCRIM.getValue("harbor")
+                                    val painted = base
+                                        .paint(
+                                            painter = painterResource(id = R.drawable.harbor_chat_bg),
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                    if (LocalDarkMode.current) {
+                                        painted
+                                            .background(Color(0xFF141A22).copy(alpha = 0.66f))
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF1E2A36).copy(alpha = 0.38f),
+                                                        Color(0xFF111820).copy(alpha = 0.72f),
+                                                    )
+                                                )
+                                            )
+                                    } else {
+                                        painted.background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color(scrim.top.toLong()),
+                                                    Color(scrim.accent.toLong()).copy(alpha = 0.12f),
+                                                    Color(scrim.bottom.toLong()).copy(alpha = 0.10f),
+                                                    Color(scrim.bottom.toLong()),
+                                                )
+                                            )
+                                        )
+                                    }
+                                }
+
+                                "creamrose" -> {
+                                    // 奶油玫瑰与 Harbor 共用同一张底图和铺图逻辑，
+                                    // 只替换上层 scrim；这样两者的玻璃/层级效果完全一致。
+                                    val creamRosePainter = painterResource(
+                                        id = R.drawable.harbor_chat_bg
+                                    )
+                                    val creamRoseScrim = if (LocalDarkMode.current) {
+                                        listOf(
+                                            Color(0xFF3A2428).copy(alpha = 0.32f),
+                                            Color(0xFF241719).copy(alpha = 0.40f),
+                                            Color(0xFF1C1412).copy(alpha = 0.74f),
+                                        )
+                                    } else {
+                                        listOf(
+                                            Color(0xFFF2D9D0).copy(alpha = 0.24f),
+                                            Color(0xFFF6F1EB).copy(alpha = 0.16f),
+                                            Color(0xFFF6F1EB).copy(alpha = 0.42f),
+                                        )
+                                    }
+                                    base
+                                        .paint(
+                                            painter = creamRosePainter,
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                        .background(Brush.verticalGradient(creamRoseScrim))
+                                }
+
+                                else -> base
                             }
                         }
                 ) {
-                    NavDisplay(
-                        backStack = backStack,
-                        entryDecorators = listOf(
-                            rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator(),
-                        ),
-                        modifier = Modifier.fillMaxSize(),
-                        onBack = { backStack.removeLastOrNull() },
-                        transitionSpec = {
-                            if (backStack.size == 1) fadeIn() togetherWith fadeOut()
-                            else {
-                                slideInHorizontally { it } togetherWith
-                                    slideOutHorizontally { -it / 2 } + scaleOut(targetScale = 0.7f) + fadeOut()
-                            }
-                        },
-                        popTransitionSpec = {
-                            slideInHorizontally { -it / 2 } + scaleIn(initialScale = 0.7f) + fadeIn() togetherWith
-                                slideOutHorizontally { it }
-                        },
-                        predictivePopTransitionSpec = {
-                            slideInHorizontally { -it / 2 } + scaleIn(initialScale = 0.7f) + fadeIn() togetherWith
-                                slideOutHorizontally { it }
-                        },
-                        entryProvider = entryProvider {
+                    SettingsBackground {
+                        NavDisplay(
+                            backStack = backStack,
+                            entryDecorators = listOf(
+                                rememberSaveableStateHolderNavEntryDecorator(),
+                                rememberViewModelStoreNavEntryDecorator(),
+                            ),
+                            modifier = Modifier.fillMaxSize(),
+                            onBack = { backStack.removeLastOrNull() },
+                            transitionSpec = {
+                                if (backStack.size == 1) fadeIn() togetherWith fadeOut()
+                                else {
+                                    slideInHorizontally { it } togetherWith
+                                        slideOutHorizontally { -it / 2 } + scaleOut(targetScale = 0.7f) + fadeOut()
+                                }
+                            },
+                            popTransitionSpec = {
+                                slideInHorizontally { -it / 2 } + scaleIn(initialScale = 0.7f) + fadeIn() togetherWith
+                                    slideOutHorizontally { it }
+                            },
+                            predictivePopTransitionSpec = {
+                                slideInHorizontally { -it / 2 } + scaleIn(initialScale = 0.7f) + fadeIn() togetherWith
+                                    slideOutHorizontally { it }
+                            },
+                            entryProvider = entryProvider {
                             entry<Screen.Chat>(
                                 metadata = NavDisplay.transitionSpec { fadeIn() togetherWith fadeOut() }
                                         + NavDisplay.popTransitionSpec { fadeIn() togetherWith fadeOut() }
@@ -627,15 +721,15 @@ class RouteActivity : ComponentActivity() {
                                 DebugPage()
                             }
 
-entry<Screen.Log> {
-    LogPage()
-}
+                            entry<Screen.Log> {
+                                LogPage()
+                            }
 
-entry<Screen.SecurityAudit> {
-    SecurityAuditPage()
-}
+                            entry<Screen.SecurityAudit> {
+                                SecurityAuditPage()
+                            }
 
-entry<Screen.Extensions> {
+                            entry<Screen.Extensions> {
                                 ExtensionsPage()
                             }
 
@@ -857,36 +951,37 @@ entry<Screen.Extensions> {
                                 )
                             }
 
-                        }
-                    )
-                    AnimatedVisibility(
-                        visible = migrationState is MigrationState.Migrating,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        val state = migrationState as? MigrationState.Migrating
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
-                            contentAlignment = Alignment.Center
+                            }
+                        )
+                        AnimatedVisibility(
+                            visible = migrationState is MigrationState.Migrating,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            val state = migrationState as? MigrationState.Migrating
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+                                contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator()
-                                Text(
-                                    text = stringResource(R.string.db_migrating),
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                if (state != null) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    CircularProgressIndicator()
                                     Text(
-                                        text = "v${state.from} → v${state.to}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = stringResource(R.string.db_migrating),
+                                        style = MaterialTheme.typography.bodyLarge
                                     )
+                                    if (state != null) {
+                                        Text(
+                                            text = "v${state.from} → v${state.to}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }

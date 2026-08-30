@@ -118,10 +118,59 @@ private val flavour by lazy {
 
 private val parser by lazy { MarkdownParser(flavour) }
 
+// moodlet: <silent mood reason> 不在 GFM 的 HTML 白名单里。
+// 若原样交给 markdown 解析器，只有"独立成段且前有空行"时才会被当 HTML_BLOCK 透传；
+// 紧跟正文时会被当行内文本转义成 &lt;silent&gt;，徽章就漏成纯文本（偶发的根因）。
+// 这里在 markdown 解析前把整段抽出、占位，生成 HTML 之后再放回，绕开启发式判断。
+private val SILENT_TAG_REGEX = Regex(
+    """<silent\b[^>]*>(?:.*?</silent\s*>)?""",
+    setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+)
+
+private const val SILENT_PLACEHOLDER_PREFIX = "\u0000moodlet-"
+private const val SILENT_PLACEHOLDER_SUFFIX = "\u0000"
+
+/** 抽出 moodlet 标签并替换为占位符，返回处理后的文本与按序收集的原始标签。 */
+private fun extractSilentTags(content: String): Pair<String, List<String>> {
+    if (!content.contains("<silent", ignoreCase = true)) return content to emptyList()
+
+    val codeBlocks = mutableListOf<IntRange>()
+    CODE_BLOCK_REGEX.findAll(content).forEach { codeBlocks.add(it.range) }
+
+    val collected = mutableListOf<String>()
+    val replaced = SILENT_TAG_REGEX.replace(content) { m ->
+        // 代码块里的示例不动，否则用户贴 HTML 片段会被吃掉
+        if (codeBlocks.any { m.range.first in it }) {
+            m.value
+        } else {
+            collected += m.value
+            // 占位符独立成段，避免被并进相邻段落
+            "\n\n" + SILENT_PLACEHOLDER_PREFIX + (collected.size - 1) + SILENT_PLACEHOLDER_SUFFIX + "\n\n"
+        }
+    }
+    return replaced to collected
+}
+
+/** 把 HTML 里的占位符还原成真实 moodlet 标签，连同包裹它的 <p> 一起替换掉。 */
+private fun restoreSilentTags(html: String, tags: List<String>): String {
+    if (tags.isEmpty()) return html
+    var result = html
+    tags.forEachIndexed { index, tag ->
+        val token = SILENT_PLACEHOLDER_PREFIX + index + SILENT_PLACEHOLDER_SUFFIX
+        // 占位符会被 markdown 包成 <p>token</p>，整段换掉以免留下空段落
+        result = result
+            .replace("<p>$token</p>", tag)
+            .replace(token, tag)
+    }
+    return result
+}
+
 private fun generateMarkdownHtml(content: String): String {
-    val preprocessed = preProcess(content)
+    val (withoutSilent, silentTags) = extractSilentTags(content)
+    val preprocessed = preProcess(withoutSilent)
     val tree = parser.buildMarkdownTreeFromString(preprocessed)
-    return HtmlGenerator(preprocessed, tree, flavour).generateHtml()
+    val html = HtmlGenerator(preprocessed, tree, flavour).generateHtml()
+    return restoreSilentTags(html, silentTags)
 }
 
 // ---- Main composable ----
@@ -287,6 +336,8 @@ private fun HtmlBlockElement(
             }
         }
 
+        "silent" -> MoodletBadge(element = element)
+
         else -> HtmlStyledElement(element = element) {
             // Generic fallback: recurse into children
             element.childNodes().forEach { HtmlBodyNode(it, onClickCitation) }
@@ -333,8 +384,10 @@ private fun HtmlParagraphContent(
     val hasImages = element.select("img").isNotEmpty()
     // A span.math with inline != "true" is a block math element
     val hasBlockMath = element.select("span.math").any { it.attr("inline") != "true" }
+    // moodlet: <silent> badges must render as composables, not inline text
+    val hasSilent = element.select("silent").isNotEmpty()
 
-    if (hasImages || hasBlockMath) {
+    if (hasImages || hasBlockMath || hasSilent) {
         // Mixed block content: render children individually in a FlowRow
         FlowRow(
             modifier = modifier.fillMaxWidth(),
@@ -783,6 +836,8 @@ private fun HtmlInlineAsComposable(node: Node, onClickCitation: (String) -> Unit
                 tag == "br" -> {
                     // handled by inline text
                 }
+
+                tag == "silent" -> MoodletBadge(element = node)
 
                 else -> {
                     // Render as an inline text segment

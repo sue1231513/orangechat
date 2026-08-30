@@ -386,6 +386,11 @@
   <string name="favorite_page_removed">收藏已移除</string>
   <string name="favorite_page_title">收藏</string>
   <string name="favorite_page_untitled_conversation">未命名对话</string>
+  <string name="favorite_page_invalid">原对话已删除</string>
+  <string name="favorite_page_clean_invalid">清理失效收藏</string>
+  <string name="favorite_page_cleaned">已清理 %1$d 条失效收藏</string>
+  <string name="favorite_page_no_invalid">没有失效收藏</string>
+  <string name="favorite_page_invalid_open_blocked">原对话已经不在了，删掉这条收藏吧</string>
   <string name="history_page_cancel">取消</string>
   <string name="history_page_conversation_deleted">对话已删除</string>
   <string name="history_page_delete">删除</string>
@@ -688,6 +693,8 @@
   <string name="setting_display_page_send_on_enter_desc">按 Enter 发送消息而非换行</string>
   <string name="setting_display_page_send_on_enter_title">按Enter发送</string>
   <string name="setting_display_page_show_assistant_bubble_desc">是否为助手消息显示气泡背景</string>
+  <string name="setting_display_page_show_user_bubble_title">显示用户消息气泡</string>
+  <string name="setting_display_page_show_user_bubble_desc">是否为用户消息显示气泡背景</string>
   <string name="setting_display_page_show_assistant_bubble_title">显示助手消息气泡</string>
   <string name="setting_display_page_show_date_below_name_desc">是否在昵称或模型名称下方显示消息日期</string>
   <string name="setting_display_page_show_date_below_name_title">显示昵称下方日期</string>
@@ -705,6 +712,12 @@
   <string name="setting_display_page_show_updates_title">显示更新</string>
   <string name="setting_display_page_show_user_avatar_desc">是否在聊天消息中显示用户头像</string>
   <string name="setting_display_page_show_user_avatar_title">显示用户头像</string>
+  <string name="setting_display_page_show_assistant_avatar_desc">是否在聊天消息中显示 AI 头像 / 模型图标</string>
+  <string name="setting_display_page_show_assistant_avatar_title">显示 AI 头像</string>
+  <string name="setting_display_page_top_bar_avatar_desc">在聊天页顶栏显示当前助手头像</string>
+  <string name="setting_display_page_top_bar_avatar_title">顶栏头像</string>
+  <string name="setting_display_page_timeline_rail_desc">两侧头像都关闭时，消息挂在左侧一条细线上，每轮一个节点</string>
+  <string name="setting_display_page_timeline_rail_title">左侧时间线</string>
   <string name="setting_display_page_skip_crop_image_desc">导入图片或拍照后跳过裁剪界面</string>
   <string name="setting_display_page_skip_crop_image_title">跳过图片编辑</string>
   <string name="setting_display_page_title">显示设置</string>
@@ -819,6 +832,9 @@
   <string name="setting_page_mcp">MCP</string>
   <string name="setting_page_mcp_desc">配置MCP服务器</string>
   <string name="setting_page_message_display_settings">消息显示</string>
+  <string name="setting_page_group_automation">自动化</string>
+  <string name="setting_page_group_capabilities">能力</string>
+  <string name="setting_page_group_channels">接入</string>
   <string name="setting_page_model_and_services">模型与服务</string>
   <string name="setting_page_no_share_app">找不到分享应用</string>
   <string name="setting_page_providers">提供商</string>
@@ -1062,6 +1078,8 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="theme_name_black">中性黑</string>
   <string name="theme_name_ocean">海湾蓝</string>
   <string name="theme_name_pearltide">珍珠潮汐</string>
+  <string name="theme_name_harbor">Harbor</string>
+  <string name="theme_name_creamrose">奶油玫瑰</string>
   <string name="theme_name_sakura">樱花粉</string>
   <string name="theme_name_spring">原野绿</string>
   <string name="title_activity_safe_mode">安全模式</string>

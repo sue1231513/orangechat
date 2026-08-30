@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.LargeFlexibleTopAppBar
+import me.rerere.rikkahub.ui.theme.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -66,8 +66,26 @@ fun SettingDisplayIllustrationPage(vm: SettingVM = koinViewModel()) {
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
+    val settingsBgDir = remember { File(context.filesDir, "settings_backgrounds").apply { mkdirs() } }
     val bgDir = remember { File(context.filesDir, "input_backgrounds").apply { mkdirs() } }
     val drawerBgDir = remember { File(context.filesDir, "drawer_backgrounds").apply { mkdirs() } }
+
+    // Settings background picker launcher
+    val settingsBgPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            val destFile = File(settingsBgDir, "settings_bg_${System.currentTimeMillis()}.png")
+            context.contentResolver.openInputStream(it)?.use { input ->
+                destFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            val oldFile = File(displaySetting.settingsBackgroundPath)
+            if (oldFile.isFile && oldFile.parentFile?.canonicalFile == settingsBgDir.canonicalFile) {
+                oldFile.delete()
+            }
+            updateDisplaySetting(displaySetting.copy(settingsBackgroundPath = destFile.absolutePath))
+        }
+    }
 
     // Input background picker launcher
     val bgPickerLauncher = rememberLauncherForActivityResult(
@@ -147,13 +165,48 @@ fun SettingDisplayIllustrationPage(vm: SettingVM = koinViewModel()) {
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = CustomColors.topBarColors.containerColor
+        containerColor = settingsScaffoldContainerColor(CustomColors.topBarColors.containerColor)
     ) { contentPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding + PaddingValues(8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Settings Background
+            item {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text("设置页背景") },
+                ) {
+                    item(
+                        headlineContent = { Text("自定义设置页背景图") },
+                        supportingContent = {
+                            Text(
+                                if (displaySetting.settingsBackgroundPath.isNotBlank() && File(displaySetting.settingsBackgroundPath).exists())
+                                    "当前背景: ${File(displaySetting.settingsBackgroundPath).name}"
+                                else "选择一张图片作为设置页背景"
+                            )
+                        },
+                        trailingContent = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (displaySetting.settingsBackgroundPath.isNotBlank()) {
+                                    TextButton(onClick = {
+                                        val oldFile = File(displaySetting.settingsBackgroundPath)
+                                        if (oldFile.isFile && oldFile.parentFile?.canonicalFile == settingsBgDir.canonicalFile) {
+                                            oldFile.delete()
+                                        }
+                                        updateDisplaySetting(displaySetting.copy(settingsBackgroundPath = ""))
+                                    }) { Text("清除") }
+                                }
+                                TextButton(onClick = {
+                                    settingsBgPickerLauncher.launch(arrayOf("image/*"))
+                                }) { Text("选择图片") }
+                            }
+                        },
+                    )
+                }
+            }
+
             // Input Background
             item {
                 CardGroup(

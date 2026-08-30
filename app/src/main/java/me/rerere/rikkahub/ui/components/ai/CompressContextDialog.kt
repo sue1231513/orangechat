@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.ui.RabbitLoadingIndicator
+import me.rerere.rikkahub.ui.theme.popupContainerColor
 
 @Composable
 fun CompressContextDialog(
@@ -64,6 +66,7 @@ fun CompressContextDialog(
                 onDismiss()
             }
         },
+        containerColor = popupContainerColor(AlertDialogDefaults.containerColor),
         title = {
             Text(stringResource(R.string.chat_page_compress_context_title))
         },

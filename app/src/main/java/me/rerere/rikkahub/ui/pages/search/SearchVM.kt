@@ -16,16 +16,20 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import me.rerere.rikkahub.data.db.fts.MessageSearchResult
+import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.repository.ConversationRepository
 
 class SearchVM(
     private val conversationRepo: ConversationRepository,
+    private val settingsStore: me.rerere.rikkahub.data.datastore.SettingsStore,
 ) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
 
     var searchQuery by mutableStateOf("")
         private set
     var results by mutableStateOf<List<MessageSearchResult>>(emptyList())
+        private set
+    var cloudResults by mutableStateOf<List<CloudSearchResult>>(emptyList())
         private set
     var isLoading by mutableStateOf(false)
         private set
@@ -70,13 +74,60 @@ class SearchVM(
     private suspend fun performSearch(query: String) {
         if (query.isBlank()) {
             results = emptyList()
+            cloudResults = emptyList()
             return
         }
         isLoading = true
         try {
             results = conversationRepo.searchMessages(query)
+            // 同时搜 Supabase 云端
+            searchCloud(query)
         } finally {
             isLoading = false
         }
     }
+
+    private suspend fun searchCloud(query: String) {
+        try {
+            val settings = settingsStore.settingsFlow.value
+            val externalConfigs = settings.externalMemories.filter { it.enabled }
+            val currentAssistant = settings.getCurrentAssistant()
+            val allCloudResults = mutableListOf<CloudSearchResult>()
+            externalConfigs.forEach { config ->
+                val service = me.rerere.rikkahub.data.service.ExternalMemoryService(config)
+                // 先按当前助手 UUID 搜
+                var cloudMsgs = service.searchMessages(
+                    assistantId = currentAssistant.id.toString(),
+                    keyword = query,
+                    limit = 20,
+                ).getOrDefault(emptyList())
+                // UUID 匹配不上时（云端存的是助手名），做一次全局搜索兜底
+                if (cloudMsgs.isEmpty()) {
+                    cloudMsgs = service.searchMessagesAnyAssistant(
+                        keyword = query,
+                        assistantId = null,
+                        limit = 20,
+                    ).getOrDefault(emptyList())
+                }
+                cloudMsgs.forEach { msg ->
+                    allCloudResults.add(CloudSearchResult(
+                        content = msg.content,
+                        role = msg.role,
+                        createdAt = msg.createdAt,
+                        source = config.name,
+                    ))
+                }
+            }
+            cloudResults = allCloudResults
+        } catch (e: Exception) {
+            cloudResults = emptyList()
+        }
+    }
 }
+
+data class CloudSearchResult(
+        val content: String,
+        val role: String,
+        val createdAt: String,
+        val source: String,
+)

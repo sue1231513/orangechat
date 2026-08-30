@@ -16,10 +16,12 @@ import me.rerere.hugeicons.stroke.Delete01
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import me.rerere.rikkahub.ui.theme.materialModeBorderStroke
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,8 +49,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -57,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.data.datastore.DisplayMaterialMode
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.ui.theme.extendColors
 import me.rerere.rikkahub.utils.toLocalString
@@ -86,6 +92,7 @@ fun ColumnScope.ConversationList(
     listState: LazyListState,
     modifier: Modifier = Modifier,
     drawerItemAlpha: Float = 1f,
+    materialMode: DisplayMaterialMode = DisplayMaterialMode.FLAT,
     onClick: (Conversation) -> Unit = {},
     onDelete: (Conversation) -> Unit = {},
     onRegenerateTitle: (Conversation) -> Unit = {},
@@ -116,12 +123,14 @@ fun ColumnScope.ConversationList(
     ) {
         if (conversations.itemCount == 0) {
             item {
-                    Surface(
+                ConversationListMaterialContainer(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = drawerItemAlpha)
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    drawerItemAlpha = drawerItemAlpha,
+                    materialMode = materialMode,
                 ) {
                     Text(
                         text = stringResource(id = R.string.chat_page_no_conversations),
@@ -147,7 +156,6 @@ fun ColumnScope.ConversationList(
                 is ConversationListItem.DateHeader -> {
                     DateHeaderItem(
                         label = item.label,
-                        drawerItemAlpha = drawerItemAlpha,
                         modifier = Modifier.animateItem()
                     )
                 }
@@ -155,6 +163,7 @@ fun ColumnScope.ConversationList(
                 is ConversationListItem.PinnedHeader -> {
                     PinnedHeader(
                         drawerItemAlpha = drawerItemAlpha,
+                        materialMode = materialMode,
                         modifier = Modifier.animateItem()
                     )
                 }
@@ -171,6 +180,7 @@ fun ColumnScope.ConversationList(
                         onMoveToAssistant = onMoveToAssistant,
                         onMoveToFolder = onMoveToFolder,
                         drawerItemAlpha = drawerItemAlpha,
+                        materialMode = materialMode,
                         modifier = Modifier.animateItem()
                     )
                 }
@@ -186,15 +196,13 @@ fun ColumnScope.ConversationList(
 @Composable
 private fun DateHeaderItem(
     label: String,
-    drawerItemAlpha: Float = 1f,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = drawerItemAlpha))
             .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
@@ -208,28 +216,35 @@ private fun DateHeaderItem(
 @Composable
 private fun PinnedHeader(
     drawerItemAlpha: Float = 1f,
+    materialMode: DisplayMaterialMode,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    ConversationListMaterialContainer(
         modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = drawerItemAlpha))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .fillMaxWidth(),
+        shape = RectangleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        drawerItemAlpha = drawerItemAlpha,
+        materialMode = materialMode,
     ) {
-        Icon(
-            imageVector = HugeIcons.Pin,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(Modifier.size(8.dp))
-        Text(
-            text = stringResource(R.string.pinned_chats),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = HugeIcons.Pin,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = stringResource(R.string.pinned_chats),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
 
@@ -240,6 +255,7 @@ private fun ConversationItem(
     loading: Boolean,
     modifier: Modifier = Modifier,
     drawerItemAlpha: Float = 1f,
+    materialMode: DisplayMaterialMode,
     onDelete: (Conversation) -> Unit = {},
     onRegenerateTitle: (Conversation) -> Unit = {},
     onPin: (Conversation) -> Unit = {},
@@ -248,17 +264,18 @@ private fun ConversationItem(
     onClick: (Conversation) -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val itemShape = RoundedCornerShape(50f)
     val backgroundColor = if (selected) {
-        MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).copy(alpha = drawerItemAlpha)
+        MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp)
     } else {
         Color.Transparent
     }
     var showDropdownMenu by remember {
         mutableStateOf(false)
     }
-    Box(
+    ConversationListMaterialContainer(
         modifier = modifier
-            .clip(RoundedCornerShape(50f))
+            .clip(itemShape)
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
@@ -266,8 +283,12 @@ private fun ConversationItem(
                 onLongClick = {
                     showDropdownMenu = true
                 }
-            )
-            .background(backgroundColor),
+            ),
+        shape = itemShape,
+        color = backgroundColor,
+        drawerItemAlpha = drawerItemAlpha,
+        materialMode = materialMode,
+        hasBackground = selected,
     ) {
         Row(
             modifier = Modifier
@@ -278,7 +299,8 @@ private fun ConversationItem(
             Text(
                 text = conversation.title.ifBlank { stringResource(id = R.string.chat_page_new_message) },
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.weight(1f))
 
@@ -305,6 +327,7 @@ private fun ConversationItem(
             DropdownMenu(
                 expanded = showDropdownMenu,
                 onDismissRequest = { showDropdownMenu = false },
+                border = materialModeBorderStroke(),
             ) {
                 DropdownMenuItem(
                     text = {
@@ -378,4 +401,114 @@ private fun ConversationItem(
             }
         }
     }
+}
+
+@Composable
+private fun ConversationListMaterialContainer(
+    modifier: Modifier = Modifier,
+    shape: Shape,
+    color: Color,
+    drawerItemAlpha: Float,
+    materialMode: DisplayMaterialMode,
+    hasBackground: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    if (!hasBackground) {
+        Box(modifier = modifier) {
+            content()
+        }
+        return
+    }
+
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val borderModifier = when (materialMode) {
+        DisplayMaterialMode.TRANSLUCENT -> Modifier.border(
+            width = 1.dp,
+            color = onSurface.copy(alpha = 0.14f * drawerItemAlpha),
+            shape = shape,
+        )
+
+        DisplayMaterialMode.GLASS -> Modifier.border(
+            width = 1.dp,
+            color = onSurface.copy(alpha = 0.1f * drawerItemAlpha),
+            shape = shape,
+        )
+
+        DisplayMaterialMode.FLAT,
+        DisplayMaterialMode.FOLLOW_THEME -> Modifier
+    }
+
+    val backgroundColor = when (materialMode) {
+        DisplayMaterialMode.FLAT,
+        DisplayMaterialMode.FOLLOW_THEME -> color
+
+        DisplayMaterialMode.TRANSLUCENT,
+        DisplayMaterialMode.GLASS -> color.copy(alpha = drawerItemAlpha)
+    }
+
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(backgroundColor)
+            .then(borderModifier),
+    ) {
+        if (materialMode == DisplayMaterialMode.GLASS) {
+            ConversationListGlassLayers(
+                shape = shape,
+                drawerItemAlpha = drawerItemAlpha,
+            )
+        }
+        content()
+    }
+}
+
+@Composable
+private fun BoxScope.ConversationListGlassLayers(
+    shape: Shape,
+    drawerItemAlpha: Float,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        colorScheme.onSurface.copy(alpha = 0.1f * drawerItemAlpha),
+                        colorScheme.primary.copy(alpha = 0.07f * drawerItemAlpha),
+                        Color.Transparent,
+                    )
+                )
+            )
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        colorScheme.onSurface.copy(alpha = 0.13f * drawerItemAlpha),
+                        colorScheme.onSurface.copy(alpha = 0.035f * drawerItemAlpha),
+                        Color.Transparent,
+                    )
+                )
+            )
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        colorScheme.onSurface.copy(alpha = 0.2f * drawerItemAlpha),
+                        colorScheme.onSurface.copy(alpha = 0.045f * drawerItemAlpha),
+                        Color.Transparent,
+                    )
+                ),
+                shape = shape,
+            )
+    )
 }

@@ -650,12 +650,44 @@ enum class ChatFontFamily {
 }
 
 @Serializable
+enum class DisplayMaterialMode {
+    @SerialName("follow_theme")
+    FOLLOW_THEME,
+    @SerialName("flat")
+    FLAT,
+    @SerialName("translucent")
+    TRANSLUCENT,
+    @SerialName("glass")
+    GLASS,
+}
+
+@Serializable
+enum class ChatBubbleStyle {
+    RIKKA,
+    TELEGRAM,
+}
+
+@Serializable
 data class DisplaySetting(
     val userAvatar: Avatar = Avatar.Dummy,
     val userNickname: String = "",
     val useAppIconStyleLoadingIndicator: Boolean = true,
     val showUserAvatar: Boolean = true,
+    /**
+     * 是否显示 AI 侧头像 / 模型图标。
+     * 关闭后消息改为挂在左侧一条细线上，每轮一个节点，避免行首失去对齐锚点。
+     * 合并了旧的 showModelIcon：两者本是同一件事，保留 showModelIcon 字段仅为兼容旧配置。
+     */
+    val showAssistantAvatar: Boolean = true,
+    /** 头像全部关闭时，是否用左侧时间线（细线 + 每轮节点）代替。 */
+    val useTimelineWhenNoAvatar: Boolean = true,
+    /** 是否在聊天页顶栏显示当前助手头像（整屏只此一个，参考 kimi-room 的页首头像）。 */
+    val showTopBarAvatar: Boolean = false,
     val showAssistantBubble: Boolean = false,
+    /** 用户消息是否显示气泡背景；关闭后原生与 Telegram 布局都会真正绕开 BubbleSurface。 */
+    val showUserBubble: Boolean = true,
+    /** 关闭时保持原生 Rikka；开启后使用 Telegram 式双侧消息气泡。 */
+    val chatBubbleStyle: ChatBubbleStyle = ChatBubbleStyle.RIKKA,
     val showModelIcon: Boolean = true,
     val showModelName: Boolean = true,
     val showDateBelowName: Boolean = false,
@@ -682,12 +714,24 @@ data class DisplaySetting(
     val enableLatexRendering: Boolean = true,
     val enableBlurEffect: Boolean = false,
     val chatFontFamily: ChatFontFamily = ChatFontFamily.DEFAULT,
+    val materialMode: DisplayMaterialMode = DisplayMaterialMode.FOLLOW_THEME,
+    val interfaceRealtimeRendering: Boolean = false,
+    // 聊天气泡实时背景模糊（默认关闭，避免旧用户升级后自动增加每气泡 GPU 成本；固定 3 dp）
+    val chatBubbleRealtimeBlur: Boolean = false,
+    // 液态玻璃气泡（iOS Liquid Glass 风格：模糊 + 边缘高光 + 顶部折射反光；独立开关）
+    val liquidGlassBubbles: Boolean = false,
+    // 抽屉实时模糊强度（单位 dp，设置页 Slider 约束 3..20）
+    val interfaceBlurRadius: Float = 8f,
+    val interfaceSurfaceOpacity: Float = 82f,
+    val popupSurfaceOpacity: Float = 90f,
     val enableVolumeKeyScroll: Boolean = false,
     val volumeKeyScrollRatio: Float = 1.0f,
     val chatBubbleTransparency: Float = 0f,
     val thinkingChainTransparency: Float = 0f,
     // 自定义字体
     val customFontPath: String = "",
+    // 设置页自定义背景
+    val settingsBackgroundPath: String = "",
     // 输入框自定义背景
     val inputBackgroundPath: String = "",
     // 头像框（QQ挂件风格）
@@ -701,6 +745,8 @@ data class DisplaySetting(
     val aiAvatarFrameScale: Float = 1f,
     // 侧边栏背景
     val drawerBackgroundPath: String = "",
+    // 侧边栏根面板不透明度（百分比）
+    val drawerSurfaceOpacity: Float = 100f,
     // 侧边栏元素透明度
     val drawerItemAlpha: Float = 1f,
     // 颜色自定义
@@ -718,7 +764,21 @@ data class DisplaySetting(
     val assistantBubbleImagePath: String = "",
     val bubbleCornerRadius: Float = 16f,
     val bubbleImageOverlayEnabled: Boolean = false, // 关=纯图片, 开=图片+主题色遮罩
-)
+    // 发送音效（自定义 mp3 路径，空 = 不播放）
+    val sendSoundPath: String = "",
+) {
+    /**
+     * 顶栏头像开启后，逐条消息头像不再显示。
+     *
+     * 两处同时挂头像会把标题挤成省略号，而顶栏那一个已经表明了当前是谁，
+     * 所以顶栏接管时列表里让位，不需要用户再手动关另外两个开关。
+     */
+    val effectiveShowUserAvatar: Boolean
+        get() = showUserAvatar && !showTopBarAvatar
+
+    val effectiveShowAssistantAvatar: Boolean
+        get() = showAssistantAvatar && !showTopBarAvatar
+}
 
 @Serializable
 data class WebDavConfig(

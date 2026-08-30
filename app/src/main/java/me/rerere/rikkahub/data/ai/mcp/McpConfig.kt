@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
@@ -34,6 +34,7 @@ data class McpOAuthState(
     val authorizationEndpoint: String? = null,
     val tokenEndpoint: String? = null,
     val registrationEndpoint: String? = null,
+    val redirectUri: String? = null,
     val scope: String? = null,
     val accessToken: String? = null,
     val refreshToken: String? = null,
@@ -45,7 +46,7 @@ data class McpOAuthState(
     override fun toString(): String =
         "McpOAuthState(enabled=$enabled, clientId=$clientId, clientSecret=${clientSecret.masked()}, " +
             "authorizationEndpoint=$authorizationEndpoint, tokenEndpoint=$tokenEndpoint, " +
-            "registrationEndpoint=$registrationEndpoint, scope=$scope, " +
+            "registrationEndpoint=$registrationEndpoint, redirectUri=$redirectUri, scope=$scope, " +
             "accessToken=${accessToken.masked()}, refreshToken=${refreshToken.masked()}, expiresAt=$expiresAt)"
 
     private fun String?.masked(): String = when {

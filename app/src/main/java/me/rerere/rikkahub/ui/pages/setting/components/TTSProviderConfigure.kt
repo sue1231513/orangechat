@@ -387,7 +387,7 @@ private fun MiniMaxTTSConfiguration(
                 onValueChange(setting.copy(model = newModel))
             },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("speech-2.5-hd-preview") }
+            placeholder = { Text("speech-2.8-turbo") }
         )
     }
 

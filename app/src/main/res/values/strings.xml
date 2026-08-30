@@ -435,6 +435,11 @@
   <string name="favorite_page_removed">Favorite removed</string>
   <string name="favorite_page_title">Favorites</string>
   <string name="favorite_page_untitled_conversation">Untitled Conversation</string>
+  <string name="favorite_page_invalid">Conversation deleted</string>
+  <string name="favorite_page_clean_invalid">Clear invalid</string>
+  <string name="favorite_page_cleaned">Cleared %1$d invalid favorites</string>
+  <string name="favorite_page_no_invalid">No invalid favorites</string>
+  <string name="favorite_page_invalid_open_blocked">This conversation is gone. Delete this favorite.</string>
   <string name="history_page_cancel">Cancel</string>
   <string name="history_page_conversation_deleted">Conversation deleted</string>
   <string name="history_page_delete">Delete</string>
@@ -737,6 +742,8 @@
   <string name="setting_display_page_send_on_enter_desc">Press Enter to send message instead of adding a new line</string>
   <string name="setting_display_page_send_on_enter_title">Send on Enter</string>
   <string name="setting_display_page_show_assistant_bubble_desc">Whether to show bubble background for assistant messages</string>
+  <string name="setting_display_page_show_user_bubble_title">Show User Message Bubble</string>
+  <string name="setting_display_page_show_user_bubble_desc">Whether to show bubble background for user messages</string>
   <string name="setting_display_page_show_assistant_bubble_title">Show Assistant Message Bubble</string>
   <string name="setting_display_page_show_date_below_name_desc">Whether to show message date below nickname or model name</string>
   <string name="setting_display_page_show_date_below_name_title">Show Date Below Name</string>
@@ -754,6 +761,12 @@
   <string name="setting_display_page_show_updates_title">Show Updates</string>
   <string name="setting_display_page_show_user_avatar_desc">Whether to display user avatar in chat messages</string>
   <string name="setting_display_page_show_user_avatar_title">Show User Avatar</string>
+  <string name="setting_display_page_show_assistant_avatar_desc">Whether to display AI avatar / model icon in chat messages</string>
+  <string name="setting_display_page_show_assistant_avatar_title">Show AI Avatar</string>
+  <string name="setting_display_page_top_bar_avatar_desc">Show the current assistant avatar in the chat header</string>
+  <string name="setting_display_page_top_bar_avatar_title">Header Avatar</string>
+  <string name="setting_display_page_timeline_rail_desc">With both avatars off, hang messages on a thin left rail with one node per turn</string>
+  <string name="setting_display_page_timeline_rail_title">Left Timeline Rail</string>
   <string name="setting_display_page_skip_crop_image_desc">Skip crop interface after importing images or taking photos</string>
   <string name="setting_display_page_skip_crop_image_title">Skip Image Editing</string>
   <string name="setting_display_page_title">Display Settings</string>
@@ -868,6 +881,9 @@
   <string name="setting_page_mcp">MCP</string>
   <string name="setting_page_mcp_desc">Configure MCP Servers</string>
   <string name="setting_page_message_display_settings">Message Display</string>
+  <string name="setting_page_group_automation">Automation</string>
+  <string name="setting_page_group_capabilities">Capabilities</string>
+  <string name="setting_page_group_channels">Channels</string>
   <string name="setting_page_model_and_services">Models &amp; Services</string>
   <string name="setting_page_no_share_app">No sharing app found</string>
   <string name="setting_page_providers">Providers</string>
@@ -1109,6 +1125,8 @@
   <string name="theme_name_black">Neutral Black</string>
     <string name="theme_name_ocean">Ocean Blue</string>
     <string name="theme_name_pearltide">Pearl Tide</string>
+    <string name="theme_name_harbor">Harbor</string>
+  <string name="theme_name_creamrose">Cream Rose</string>
   <string name="theme_name_sakura">Sakura Pink</string>
   <string name="theme_name_spring">Meadow Green</string>
   <string name="title_activity_safe_mode">Safe Mode</string>

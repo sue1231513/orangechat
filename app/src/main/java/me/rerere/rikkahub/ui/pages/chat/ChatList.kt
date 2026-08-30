@@ -27,6 +27,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +60,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.surfaceColorAtElevation
@@ -73,11 +78,18 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.platform.LocalScrollCaptureInProgress
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -96,6 +108,7 @@ import kotlinx.coroutines.launch
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.ui.UIMessage
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.data.datastore.DisplayMaterialMode
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.findModelById
 import me.rerere.rikkahub.data.datastore.getAssistantById
@@ -103,6 +116,8 @@ import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.MessageNode
 import me.rerere.rikkahub.service.ChatError
 import me.rerere.rikkahub.ui.components.message.ChatMessage
+import me.rerere.rikkahub.ui.context.LocalDisplaySettings
+import me.rerere.rikkahub.ui.theme.LocalMaterialMode
 import me.rerere.rikkahub.ui.components.ui.ErrorCardsDisplay
 import me.rerere.rikkahub.ui.components.ui.ListSelectableItem
 import me.rerere.rikkahub.ui.components.ui.RabbitLoadingIndicator
@@ -316,13 +331,45 @@ private fun ChatListNormal(
             modifier = Modifier
                 .fillMaxSize()
                 .hazeSource(state = hazeState)
-                .padding(top = innerPadding.calculateTopPadding()),
+                .padding(top = innerPadding.calculateTopPadding())
+                .drawWithCache {
+                    val topFadeHeight = 52.dp.toPx()
+                    val topFade = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0f),
+                            Color.Black.copy(alpha = 0f)
+                        ),
+                        startY = 0f,
+                        endY = topFadeHeight
+                    )
+                    val bottomFadeHeight = (innerPadding.calculateBottomPadding() + 48.dp).toPx()
+                    val bottomFade = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0f),
+                            Color.Black.copy(alpha = 0f)
+                        ),
+                        startY = 0f,
+                        endY = bottomFadeHeight
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                    }
+                },
         ) {
             itemsIndexed(
                 items = displayNodes,
                 key = { index, item -> item.id },
             ) { index, node ->
-                Column {
+                Column(
+                    modifier = Modifier.animateItem(
+                        placementSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                    )
+                ) {
                     ListSelectableItem(
                         key = node.id,
                         onSelectChange = {
@@ -609,6 +656,9 @@ private fun ChatListPreview(
     onJumpToMessage: (Int) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    val materialMode = LocalMaterialMode.current
+    val surfaceOpacity =
+        (LocalDisplaySettings.current.interfaceSurfaceOpacity / 100f).coerceIn(0f, 1f)
 
     // 过滤消息，同时保留原始 index 避免后续 O(n) indexOf 查找
     val filteredMessages = remember(conversation.messageNodes, searchQuery) {
@@ -619,6 +669,8 @@ private fun ChatListPreview(
                 .filter { (_, node) -> node.currentMessage.toText().contains(searchQuery, ignoreCase = true) }
         }
     }
+
+    val searchFieldShape: Shape = CircleShape
 
     Column(
         modifier = Modifier
@@ -632,7 +684,9 @@ private fun ChatListPreview(
             onValueChange = { searchQuery = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(searchFieldShape)
+                .searchContainerMaterial(materialMode, searchFieldShape),
             placeholder = { Text(stringResource(R.string.history_page_search)) },
             leadingIcon = {
                 Icon(
@@ -652,8 +706,19 @@ private fun ChatListPreview(
                     }
                 }
             },
+            colors = OutlinedTextFieldDefaults.colors(
+                // 保留原始容器色 RGB（surface），仅将背景 alpha 设为 interfaceSurfaceOpacity
+                focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = surfaceOpacity),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = surfaceOpacity),
+                disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = surfaceOpacity),
+                // 材质描边由 searchContainerMaterial 统一绘制，关闭 M3 默认边框避免双边框
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                disabledBorderColor = Color.Transparent,
+                cursorColor = MaterialTheme.colorScheme.primary,
+            ),
             singleLine = true,
-            shape = CircleShape,
+            shape = searchFieldShape,
             maxLines = 1,
         )
 
@@ -671,6 +736,10 @@ private fun ChatListPreview(
             ) { _, (originalIndex, node) ->
                 val message = node.currentMessage
                 val isUser = message.role == me.rerere.ai.core.MessageRole.USER
+                val resultShape: Shape = MaterialTheme.shapes.medium
+                val resultContainerColor =
+                    if (isUser) MaterialTheme.colorScheme.secondaryContainer
+                    else MaterialTheme.colorScheme.tertiaryContainer
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -679,40 +748,117 @@ private fun ChatListPreview(
                         ),
                     horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
                 ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.medium,
-                        color = if (isUser) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.tertiaryContainer,
-                    ) {
-                        Row(
+                    Box(modifier = Modifier.clip(resultShape)) {
+                        // 材质层（受 clip 裁剪，不参与测量），位于半透明底色之上、文字之下
+                        Box(
                             modifier = Modifier
-                                .clickable {
-                                    onJumpToMessage(originalIndex)
-                                }
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .matchParentSize()
+                                .searchContainerMaterial(materialMode, resultShape)
+                        )
+                        Surface(
+                            shape = resultShape,
+                            color = resultContainerColor.copy(alpha = surfaceOpacity),
                         ) {
-                            val highlightColor = MaterialTheme.colorScheme.tertiaryContainer
-                            val highlightedText = remember(searchQuery, message) {
-                                val fullText = message.toText().trim().ifBlank { "[...]" }
-                                val messageText = extractMatchingSnippet(
-                                    text = fullText,
-                                    query = searchQuery
-                                )
-                                buildHighlightedText(
-                                    text = messageText,
-                                    query = searchQuery,
-                                    highlightColor = highlightColor
+                            Row(
+                                modifier = Modifier
+                                    .clickable {
+                                        onJumpToMessage(originalIndex)
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val highlightColor = MaterialTheme.colorScheme.tertiaryContainer
+                                val highlightedText = remember(searchQuery, message) {
+                                    val fullText = message.toText().trim().ifBlank { "[...]" }
+                                    val messageText = extractMatchingSnippet(
+                                        text = fullText,
+                                        query = searchQuery
+                                    )
+                                    buildHighlightedText(
+                                        text = messageText,
+                                        query = searchQuery,
+                                        highlightColor = highlightColor
+                                    )
+                                }
+                                Text(
+                                    text = highlightedText,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
-                            Text(
-                                text = highlightedText,
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 搜索容器统一材质模板（FLAT / TRANSLUCENT / GLASS）。
+ *
+ * - 底板透明度由调用方通过容器颜色 alpha 设置（interfaceSurfaceOpacity），本函数不参与。
+ * - FLAT：不附加任何层。
+ * - TRANSLUCENT：仅 1dp 主题色描边，无内部渐变。
+ * - GLASS：白色内部渐变（0.18 → 0.08 → Transparent）+ 从左到右衰减的 1dp 渐变描边
+ *   （0.55 → 0.20 → Transparent），描边受原 shape 裁剪。
+ */
+@Composable
+private fun Modifier.searchContainerMaterial(
+    materialMode: DisplayMaterialMode,
+    shape: Shape,
+): Modifier {
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    return when (materialMode) {
+        DisplayMaterialMode.FLAT,
+        DisplayMaterialMode.FOLLOW_THEME -> this
+
+        DisplayMaterialMode.TRANSLUCENT -> this.drawWithCache {
+            val outline = shape.createOutline(size, layoutDirection, this)
+            val path = (outline as? Outline.Generic)?.path
+            val borderBrush = Brush.linearGradient(
+                listOf(
+                    onSurface.copy(alpha = 0.18f),
+                    onSurface.copy(alpha = 0.18f),
+                    onSurface.copy(alpha = 0.18f),
+                ),
+                start = Offset.Zero,
+                end = Offset(size.width, size.height),
+            )
+            onDrawBehind {
+                if (path != null) {
+                    drawPath(path, brush = borderBrush, style = Stroke(width = 1.dp.toPx()))
+                }
+            }
+        }
+
+        DisplayMaterialMode.GLASS -> this.drawWithCache {
+            val outline = shape.createOutline(size, layoutDirection, this)
+            val path = (outline as? Outline.Generic)?.path
+            val glassFillBrush = Brush.linearGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.18f),
+                    Color.White.copy(alpha = 0.08f),
+                    Color.Transparent,
+                ),
+                start = Offset.Zero,
+                end = Offset(size.width, size.height),
+            )
+            val glassBorderBrush = Brush.linearGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.55f),
+                    Color.White.copy(alpha = 0.20f),
+                    Color.Transparent,
+                ),
+                start = Offset.Zero,
+                end = Offset(size.width, size.height),
+            )
+            onDrawBehind {
+                drawRect(brush = glassFillBrush)
+                if (path != null) {
+                    drawPath(path, brush = glassBorderBrush, style = Stroke(width = 1.dp.toPx()))
                 }
             }
         }

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -177,8 +178,6 @@ fun VoiceCallPage(
         modifier = Modifier
             .fillMaxSize()
             .background(ColorBgWarm)
-            // 叠加一层跟随状态的径向暖色光晕, 整屏融入当前状态色
-            // (透明度调高, 让背景真的透出暖色, 而不是死黑一片)
             .drawBehind {
                 drawRect(
                     brush = Brush.radialGradient(
@@ -202,14 +201,20 @@ fun VoiceCallPage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 顶部: 状态标签 (用当前状态主色, 与光球/背景同色系)
-            Text(
-                text = statusText(uiState.status),
-                color = accentColor,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 80.dp)
-            )
+            // 顶部: 状态标签 + 毛玻璃浮层
+            Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                color = Color.White.copy(alpha = 0.12f),
+                modifier = Modifier.padding(top = 60.dp)
+            ) {
+                Text(
+                    text = statusText(uiState.status),
+                    color = accentColor,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+            }
 
             // 中部: 流动光球 (颜色随状态变化)
             Column(
@@ -236,10 +241,7 @@ fun VoiceCallPage(
                 }
             }
 
-            // 字幕区: 按状态切换显示谁的字幕
-            // - 聆听/思考: 显示用户刚说的话 (思考时保留, 让用户确认 AI 听到了什么)
-            // - 传达/就绪: 显示 AI 的话 (传达时逐句增长, 说完后仍保留在屏上,
-            //   直到下一轮用户开始说话、Service 清掉 assistantText 才换掉)
+            // 字幕区: 按状态切换显示谁的字幕 + 毛玻璃容器
             val subtitleText = when (uiState.status) {
                 VoiceCallStatus.Listening,
                 VoiceCallStatus.Processing -> uiState.userTranscript
@@ -248,10 +250,18 @@ fun VoiceCallPage(
                 VoiceCallStatus.Error -> ""
             }
             if (subtitleText.isNotBlank()) {
-                StreamingSubtitle(
-                    text = subtitleText,
-                    accentColor = accentColor
-                )
+                Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    color = Color.White.copy(alpha = 0.08f),
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    StreamingSubtitle(
+                        text = subtitleText,
+                        accentColor = accentColor,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                }
             }
 
             // 错误信息 (保留, 方便调试)
@@ -265,13 +275,19 @@ fun VoiceCallPage(
                 )
             }
 
-            // 底部: 只有两个按钮 (ChatGPT 风格)
-            // 左: 静音, 右: 挂断.
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(56.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 64.dp)
+            // 底部按钮区: 毛玻璃底板
+            Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = Color.White.copy(alpha = 0.06f),
+                modifier = Modifier.fillMaxWidth()
             ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(56.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp)
+                ) {
                 // 静音按钮
                 val canControl = boundService != null
                 ControlButton(
@@ -299,8 +315,9 @@ fun VoiceCallPage(
                     },
                     backgroundColor = MaterialTheme.colorScheme.error,
                     iconTint = Color.White,
-                    enabled = true // 挂断始终可点, 即使 service 还没绑定
+                    enabled = true
                 )
+                }
             }
         }
     }

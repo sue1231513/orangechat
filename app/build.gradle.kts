@@ -101,7 +101,7 @@ android {
             buildConfigField("String", "BUILD_TIME", "\"$buildTime\"")
         }
         debug {
-            applicationIdSuffix = ".debug"
+            applicationIdSuffix = ".liquidglass"
             // 统一使用项目内置共享 debug keystore；若配置了 release keystore 则改用 release 签名，
             // 保证不同机器签名一致，避免覆盖安装失败（Failure [-99]）。
             signingConfig = signingConfigs.getByName(if (hasReleaseSigning) "release" else "debug")

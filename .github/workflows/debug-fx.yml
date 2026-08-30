@@ -1,0 +1,132 @@
+name: Debug FX Build
+
+on:
+  push:
+    branches:
+      - glass-fx-only
+      - orangechat-ib-tg
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: true
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web-ui/pnpm-lock.yaml
+
+      - name: Install web-ui dependencies
+        working-directory: web-ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Create dummy google-services.json
+        run: |
+          cat > app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "0",
+              "project_id": "orangechat-fx-debug"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:0:android:0",
+                  "android_client_info": {
+                    "package_name": "me.rerere.orangechat.fx"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [{"current_key": "debug"}],
+                "services": {
+                  "appinvite_service": {"other_platform_oauth_client": []}
+                }
+              },
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:0:android:1",
+                  "android_client_info": {
+                    "package_name": "me.rerere.orangechat.fx.debug"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [{"current_key": "debug"}],
+                "services": {
+                  "appinvite_service": {"other_platform_oauth_client": []}
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+
+      - name: Ensure debug keystore
+        id: keystore
+        run: |
+          if [ ! -f app/debug.keystore ]; then
+            echo "仓库内无共享 debug keystore，生成一次并提交回仓库，"
+            echo "之后所有 CI 构建复用同一签名，APK 可直接覆盖安装。"
+            keytool -genkeypair -v \
+              -keystore app/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname 'CN=Android Debug,O=Android,C=US'
+            echo "generated=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "复用仓库内共享 debug keystore"
+            echo "generated=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit shared debug keystore
+        if: steps.keystore.outputs.generated == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f app/debug.keystore
+          git commit -m "ci: 提交共享 debug keystore，固定 CI 包签名 [skip ci]" \
+                     -m "避免每次 CI 现生成随机 keystore 导致新包与已装 APK 签名冲突（覆盖安装被拒）。debug keystore 密码为公开约定值 android，不含敏感信息；release 签名仍走 local.properties，不受影响。"
+          git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Build Debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: orangechat-fx-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

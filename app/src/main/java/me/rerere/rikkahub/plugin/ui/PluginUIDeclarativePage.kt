@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
@@ -6,6 +6,8 @@
 
 package me.rerere.rikkahub.plugin.ui
  
+import me.rerere.rikkahub.ui.pages.setting.settingsScaffoldContainerColor
+
 import android.net.Uri
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -51,7 +53,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import me.rerere.rikkahub.ui.theme.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -117,6 +119,7 @@ fun PluginUIDeclarativePage(
     val loadedPlugin = remember(pluginId) { pluginManager.getPlugin(pluginId) }
     val uiDeclaration = remember(pluginId) { loadedPlugin?.manifest?.ui } ?: run {
         Scaffold(
+            containerColor = settingsScaffoldContainerColor(),
             topBar = {
                 TopAppBar(
                     title = { Text("Error") },
@@ -375,6 +378,7 @@ fun PluginUIDeclarativePage(
     LaunchedEffect(pluginId) { refreshAllQueries() }
  
     Scaffold(
+        containerColor = settingsScaffoldContainerColor(),
         topBar = {
             TopAppBar(
                 title = { Text(uiDeclaration.title.ifEmpty { "管理" }) },

@@ -1,10 +1,12 @@
-﻿/*
+/*
  * 橘瓣 OrangeChat
  * 衍生自 RikkaHub (https://github.com/rikkahub/rikkahub)，原作者 RE
  * 本项目基于 GNU AGPL v3 开源，详见根目录 LICENSE 文件
  */
 
 package me.rerere.rikkahub.ui.pages.history;
+import me.rerere.rikkahub.ui.pages.setting.settingsScaffoldContainerColor
+
 
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Pin
@@ -39,7 +41,7 @@ import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import me.rerere.rikkahub.ui.theme.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,6 +76,7 @@ fun HistoryPage(vm: HistoryVM = koinViewModel()) {
     val conversations by vm.conversations.collectAsStateWithLifecycle()
 
     Scaffold(
+        containerColor = settingsScaffoldContainerColor(),
         topBar = {
             TopAppBar(
                 title = {
