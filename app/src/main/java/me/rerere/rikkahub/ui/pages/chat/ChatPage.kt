@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -893,20 +894,33 @@ private fun TopBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    // 顶栏助手头像：整屏只此一个，与逐条消息头像互斥
+                    // 顶栏头像：整屏只此一处，与逐条消息头像互斥。
+                    // 开启后同时显示助手与用户头像（助手在前、略微交叠），参考 kimi-room 的页首双头像。
                     if (settings.displaySetting.showTopBarAvatar) {
-                        Box(contentAlignment = Alignment.Center) {
+                        Box {
+                            Box(
+                                modifier = Modifier.padding(end = TOP_BAR_AVATAR_OVERLAP),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                UIAvatar(
+                                    name = assistant.name,
+                                    value = assistant.avatar,
+                                    modifier = Modifier.size(TOP_BAR_AVATAR_SIZE),
+                                )
+                                AvatarFrameOverlay(
+                                    framePath = settings.displaySetting.aiAvatarFramePath,
+                                    offsetX = settings.displaySetting.aiAvatarFrameOffsetX,
+                                    offsetY = settings.displaySetting.aiAvatarFrameOffsetY,
+                                    scale = settings.displaySetting.aiAvatarFrameScale,
+                                    baseSize = TOP_BAR_AVATAR_SIZE.value,
+                                )
+                            }
                             UIAvatar(
-                                name = assistant.name,
-                                value = assistant.avatar,
-                                modifier = Modifier.size(32.dp),
-                            )
-                            AvatarFrameOverlay(
-                                framePath = settings.displaySetting.aiAvatarFramePath,
-                                offsetX = settings.displaySetting.aiAvatarFrameOffsetX,
-                                offsetY = settings.displaySetting.aiAvatarFrameOffsetY,
-                                scale = settings.displaySetting.aiAvatarFrameScale,
-                                baseSize = 32f,
+                                name = settings.displaySetting.userNickname.ifBlank { "Me" },
+                                value = settings.displaySetting.userAvatar,
+                                modifier = Modifier
+                                    .padding(start = TOP_BAR_AVATAR_SIZE - TOP_BAR_AVATAR_OVERLAP)
+                                    .size(TOP_BAR_AVATAR_SIZE),
                             )
                         }
                     }
@@ -995,3 +1009,6 @@ private fun TopBar(
         )
     }
 }
+// 顶栏双头像尺寸与交叠量（助手在前、用户在后略微压住）
+private val TOP_BAR_AVATAR_SIZE = 30.dp
+private val TOP_BAR_AVATAR_OVERLAP = 10.dp

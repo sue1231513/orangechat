@@ -230,6 +230,20 @@ fun ChainOfThoughtScope.ChatMessageToolStep(
     val images = tool.output.filterIsInstance<UIMessagePart.Image>()
     val audios = tool.output.filterIsInstance<UIMessagePart.Audio>()
 
+    // 工具调用三态：进行中 / 完成 / 失败。
+    // 失败按「只降不藏」处理——用错误色标出并把原文留在行里，不隐藏、不折叠掉。
+    // 约定见 GenerationHandler：执行失败与用户拒绝都写成 {"error": "..."}。
+    val errorMessage = remember(content) {
+        (content as? JsonObject)?.get("error")?.let { node ->
+            runCatching { node.jsonPrimitive.content }.getOrNull()
+        }?.takeIf { it.isNotBlank() }
+    }
+    val isFailed = errorMessage != null
+    // 失败原文可能带整段堆栈，行内只保留第一行，完整内容留在展开的结果里
+    val errorFirstLine = remember(errorMessage) {
+        errorMessage?.lineSequence()?.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
     val title = when (tool.toolName) {
         ToolNames.MEMORY -> when (memoryAction) {
             MemoryActions.CREATE -> stringResource(R.string.chat_message_tool_create_memory)
@@ -324,18 +338,23 @@ fun ChainOfThoughtScope.ChatMessageToolStep(
         ToolNames.WORKSPACE_EDIT_FILE -> workspaceEditDiffOf(tool) != null
         ToolNames.WORKSPACE_SHELL -> content != null
         else -> false
-    } || isDenied || images.isNotEmpty() || audios.isNotEmpty()
+    } || isDenied || isFailed || images.isNotEmpty() || audios.isNotEmpty()
 
     ControlledChainOfThoughtStep(
         expanded = expanded,
         onExpandedChange = { expanded = it },
         icon = {
-            if (loading) {
-                DotLoading(
-                    size = 10.dp
+            when {
+                loading -> DotLoading(size = 10.dp)
+                // 失败：错误色图标，跟完成态在一眼之内可区分
+                isFailed -> Icon(
+                    imageVector = HugeIcons.Cancel01,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.error,
                 )
-            } else {
-                Icon(
+
+                else -> Icon(
                     imageVector = getToolIcon(tool.toolName, memoryAction),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
@@ -344,14 +363,30 @@ fun ChainOfThoughtScope.ChatMessageToolStep(
             }
         },
         label = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.shimmer(isLoading = loading),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (isFailed) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.secondary
+                    },
+                    modifier = Modifier.shimmer(isLoading = loading),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // 失败原文留在行里（只降不藏），完整堆栈在展开的结果里
+                if (errorFirstLine != null) {
+                    Text(
+                        text = errorFirstLine,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         },
         extra = if (isPending && onToolApproval != null) {
             {
