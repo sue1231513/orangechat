@@ -1205,16 +1205,16 @@ class ProactiveMessageTriggerService : android.app.Service(), KoinComponent {
                     continue
                 }
 
-                // 检查是否需要审批
-                if (toolDef.needsApproval) {
-                    // 后台模式下，需要审批的工具自动拒绝
-                    Log.w(TAG, "Tool ${toolCall.toolName} needs approval, auto-denying in proactive mode")
+                // 插件工具在主动消息模式下自动放行
+                // 插件工具名以 plg_ 开头，只有非插件且需要审批的工具才拒绝
+                if (toolDef.needsApproval && !toolCall.toolName.startsWith("plg_")) {
+                    Log.w(TAG, "Tool ${toolCall.toolName} needs approval and is not from plugin, auto-denying in proactive mode")
                     executedTools.add(toolCall.copy(
                         output = listOf(UIMessagePart.Text("""{"error":"Tool execution denied: requires user approval in proactive mode"}""")),
                         approvalState = ToolApprovalState.Denied("Proactive mode: requires approval")
                     ))
                 } else {
-                    // 执行工具
+                    // 执行工具（包括插件工具）
                     try {
                         val args = try {
                             json.parseToJsonElement(toolCall.input.ifBlank { "{}" })
